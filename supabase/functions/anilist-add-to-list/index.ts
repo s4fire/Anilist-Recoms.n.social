@@ -23,8 +23,7 @@ const encoder = new TextEncoder();
 
 type AniListPayload = {
   data?: {
-    media?: { id: number; type: string } | null;
-    listEntry?: { id: number; status: string; progress: number } | null;
+    media?: { id: number; type: string; mediaListEntry?: { id: number; status: string; progress: number } | null } | null;
     SaveMediaListEntry?: { id: number; status: string; progress: number } | null;
   };
   errors?: Array<{ message?: string }>;
