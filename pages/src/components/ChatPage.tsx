@@ -6,6 +6,7 @@ import Avatar from './Avatar'
 import AniListListAction from './AniListListAction'
 import { animeTitle, dayLabel, timeLabel } from '../lib/format'
 import { getAnime, searchAnime, type Anime } from '../lib/anilist'
+import { callEdgeFunction, EdgeFunctionError } from '../lib/edgeFunctions'
 import { displayError, supabase, type Message, type Profile, type Recommendation } from '../lib/supabase'
 
  type FeedItem = { kind: 'message'; value: Message } | { kind: 'recommendation'; value: Recommendation }
@@ -189,22 +190,70 @@ function RecommendationComposer({ userId, friendId, friend, onClose, onSent }: {
   const [busyId, setBusyId] = useState<number | null>(null)
   const [error, setError] = useState('')
   const [sent, setSent] = useState('')
+  const [alsoAddToAniList, setAlsoAddToAniList] = useState(false)
+  const [customLists, setCustomLists] = useState<string[]>([])
+  const [selectedCustomLists, setSelectedCustomLists] = useState<string[]>([])
+  const [listsLoading, setListsLoading] = useState(true)
+  const [listsError, setListsError] = useState('')
+
+  useEffect(() => {
+    let alive = true
+    void callEdgeFunction<{ custom_lists: string[] }>('anilist-list-options')
+      .then((value) => { if (alive) setCustomLists(Array.isArray(value.custom_lists) ? value.custom_lists : []) })
+      .catch((reason) => {
+        if (!alive) return
+        const edgeError = reason instanceof EdgeFunctionError ? reason : new EdgeFunctionError('Your AniList custom lists could not be loaded right now.')
+        setListsError(edgeError.code === 'reauth_required' ? 'Log in with AniList again to load your custom lists.' : edgeError.message)
+      })
+      .finally(() => { if (alive) setListsLoading(false) })
+    return () => { alive = false }
+  }, [])
   useEffect(() => {
     if (query.trim().length < 2) { setResults([]); setSearching(false); return }
     let alive = true
     const timer = window.setTimeout(() => { setSearching(true); void searchAnime(query.trim()).then((items) => { if (alive) setResults(items) }).catch((reason) => { if (alive) setError(displayError(reason, 'AniList search is unavailable.')) }).finally(() => { if (alive) setSearching(false) }) }, 350)
     return () => { alive = false; window.clearTimeout(timer) }
   }, [query])
+  function toggleCustomList(name: string) {
+    setSelectedCustomLists((current) => current.includes(name) ? current.filter((item) => item !== name) : [...current, name])
+  }
+
   async function send(anime: Anime) {
     if (!supabase) return
     setBusyId(anime.id); setError(''); setSent('')
+
+    if (alsoAddToAniList) {
+      try {
+        await callEdgeFunction('anilist-add-to-list', { media_id: anime.id, custom_lists: selectedCustomLists })
+      } catch (reason) {
+        const edgeError = reason instanceof EdgeFunctionError ? reason : new EdgeFunctionError('AniList could not update your list just now.')
+        setError('The recommendation was not sent because AniList could not be updated: ' + edgeError.message)
+        setBusyId(null)
+        return
+      }
+    }
+
     const { data, error: insertError } = await supabase.from('recommendations').insert({ sender: userId, recipient: friendId, anilist_media_id: anime.id, note: note.trim() || null, status: 'unseen' }).select('*').single()
     if (insertError) setError(displayError(insertError, 'Your recommendation couldn’t be sent.'))
-    else { onSent(data as Recommendation); setSent(`Sent to ${friend.username}. Nice choice.`); setQuery(''); setNote(''); setResults([]) }
+    else { onSent(data as Recommendation); setSent('Sent to ' + friend.username + '.'); setQuery(''); setNote(''); setResults([]) }
     setBusyId(null)
   }
   return <div className="rec-composer">
     <div className="rec-composer-head"><div><span className="eyebrow">PASS A STORY ALONG</span><h3>Recommend to {friend.username}</h3></div><button className="icon-button" onClick={onClose} aria-label="Close recommendation composer"><X size={18} /></button></div>
+    <div className="custom-list-picker">
+      <label className="custom-list-toggle">
+        <input type="checkbox" checked={alsoAddToAniList} onChange={(event) => { setAlsoAddToAniList(event.target.checked); setError('') }} />
+        <span><strong>Also add to my AniList</strong><small>Optional · adds it to Planning</small></span>
+      </label>
+      {alsoAddToAniList && <div className="custom-list-panel">
+        <div className="custom-list-panel-head"><span>Custom anime lists</span><small>{listsLoading ? 'Loading…' : customLists.length ? selectedCustomLists.length + ' selected' : 'None found'}</small></div>
+        {listsLoading ? <div className="custom-list-loading"><span className="spinner" /> Loading your AniList lists…</div>
+          : listsError ? <p className="custom-list-error" role="alert">{listsError}</p>
+            : customLists.length ? <div className="custom-list-options">{customLists.map((name) => <label className="custom-list-option" key={name}><input type="checkbox" checked={selectedCustomLists.includes(name)} onChange={() => toggleCustomList(name)} /><span>{name}</span></label>)}</div>
+              : <p className="custom-list-empty">You don’t have any custom anime lists on AniList. The checkbox above can still add the anime to Planning.</p>}
+        <p className="custom-list-help">Selected custom lists are applied only when this is a new AniList entry. Existing entries are never overwritten.</p>
+      </div>}
+    </div>
     <label className="composer-search"><Search size={16} /><input value={query} onChange={(event) => { setQuery(event.target.value); setError('') }} placeholder="Find an anime on AniList…" autoFocus /><span>ANIList</span></label>
     <label className="note-label" htmlFor="recommendation-note">Add a note <span>Optional · {note.length}/280</span></label><textarea id="recommendation-note" className="note-input" maxLength={280} rows={2} value={note} onChange={(event) => setNote(event.target.value)} placeholder="The ending stayed with me for days…" />
     {error && <div className="error-message" role="alert">{error}</div>}{sent && <div className="success-message" role="status">{sent}</div>}
