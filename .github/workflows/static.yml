@@ -1,4 +1,5 @@
 # Deploy the Vite frontend to GitHub Pages
+# Manual redeploy trigger: keep the deployment pipeline unchanged.
 name: Deploy static content to Pages
 
 on:
