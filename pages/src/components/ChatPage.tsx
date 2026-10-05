@@ -6,7 +6,6 @@ import Avatar from './Avatar'
 import AniListListAction from './AniListListAction'
 import { animeTitle, dayLabel, timeLabel } from '../lib/format'
 import { getAnime, searchAnime, type Anime } from '../lib/anilist'
-import { callEdgeFunction, EdgeFunctionError } from '../lib/edgeFunctions'
 import { displayError, supabase, type Message, type Profile, type Recommendation } from '../lib/supabase'
 
  type FeedItem = { kind: 'message'; value: Message } | { kind: 'recommendation'; value: Recommendation }
