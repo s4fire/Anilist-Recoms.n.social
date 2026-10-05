@@ -1,0 +1,4 @@
+project_id = "morrow-social-companion"
+
+[functions.auth-anilist]
+verify_jwt = false
