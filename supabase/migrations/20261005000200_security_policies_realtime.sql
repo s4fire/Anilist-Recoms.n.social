@@ -82,7 +82,16 @@ create trigger recommendations_guard_update before update on public.recommendati
   for each row execute function public.guard_recommendation_update();
 
 -- Profile lookup is available to signed-in users for username search and friend displays.
-create policy profiles_select_authenticated on public.profiles for select to authenticated using (true);
+create policy profiles_select_related on public.profiles for select to authenticated
+  using (
+    id = auth.uid()
+    or exists (
+      select 1
+      from public.friendships f
+      where (f.requester = auth.uid() and f.addressee = public.profiles.id)
+         or (f.addressee = auth.uid() and f.requester = public.profiles.id)
+    )
+  );
 create policy profiles_update_owner on public.profiles for update to authenticated using (id = auth.uid()) with check (id = auth.uid());
 
 create policy friendships_select_participants on public.friendships for select to authenticated
@@ -129,6 +138,29 @@ create policy recommendations_update_recipient_status on public.recommendations 
 revoke all on public.rate_limits from anon, authenticated;
 revoke all on function public.consume_auth_rate_limit(text, integer, integer) from public, anon, authenticated;
 grant execute on function public.consume_auth_rate_limit(text, integer, integer) to service_role;
+
+create or replace function public.search_profiles(p_query text)
+returns table (
+  id uuid,
+  username text,
+  avatar_url text
+)
+language sql
+security definer
+set search_path = public, pg_temp
+as $
+  select p.id, p.username, p.avatar_url
+  from public.profiles p
+  where auth.uid() is not null
+    and char_length(btrim(p_query)) >= 2
+    and p.id <> auth.uid()
+    and p.username ilike '%' || btrim(p_query) || '%'
+  order by p.username
+  limit 12;
+$;
+
+revoke all on function public.search_profiles(text) from public, anon;
+grant execute on function public.search_profiles(text) to authenticated;
 revoke all on public.profiles, public.friendships, public.messages, public.recommendations from anon, authenticated;
 grant select, update on public.profiles to authenticated;
 grant select, insert, update on public.friendships, public.messages, public.recommendations to authenticated;
