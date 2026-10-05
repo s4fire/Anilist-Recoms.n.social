@@ -25,7 +25,7 @@ export default function FriendsPage({ userId, relationships, friends, onChanged,
     let alive = true
     const timer = window.setTimeout(async () => {
       setSearching(true); setError('')
-      const { data, error: searchError } = await client.from('profiles').select('id,anilist_id,username,avatar_url,banner_url,created_at').ilike('username', `%${trimmed}%`).neq('id', userId).limit(12)
+      const { data, error: searchError } = await client.from('profile_directory').select('id,username,avatar_url').ilike('username', `%${trimmed}%`).neq('id', userId).limit(12)
       if (!alive) return
       if (searchError) setError(displayError(searchError, 'We couldn’t search AniList neighbors.'))
       setResults((data as Profile[] | null) || [])
@@ -66,7 +66,7 @@ export default function FriendsPage({ userId, relationships, friends, onChanged,
         const isIncoming = incoming.some((row) => row.requester === person.id)
         const isOutgoing = outgoing.some((row) => row.addressee === person.id)
         const canRetry = relationship?.status === 'declined'
-        return <div className="search-result" key={person.id}><Avatar name={person.username} src={person.avatar_url} size="md" /><div className="result-name"><strong>{person.username}</strong><small>AniList member</small></div>
+        return <div className="search-result" key={person.id}><Avatar name={person.username} src={person.avatar_url} size="md" /><div className="result-name"><strong>{person.username}</strong><small>ARNS username · @{person.username}</small></div>
           {isFriend ? <button className="button button-outline button-small" onClick={() => navigate(`/chat/${person.id}`)}>Say hello</button> : isIncoming ? <span className="request-label">They wrote first</span> : isOutgoing ? <span className="request-label"><Clock3 size={14} /> Request sent</span> : <button className="button button-outline button-small" disabled={busyId === person.id || pendingIds.has(person.id)} onClick={() => void sendRequest(person)}><UserPlus size={14} /> {busyId === person.id ? 'Sending…' : canRetry ? 'Ask again' : 'Add friend'}</button>}
         </div>
       }) : <div className="empty-search">{query.trim().length < 2 ? 'Keep typing — two letters is enough to begin.' : 'No matching AniList users found. Check the spelling and try again.'}</div>}</div>}
