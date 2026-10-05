@@ -2,12 +2,22 @@ import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 import { decryptAniListToken } from "../_shared/token_crypto.ts";
 
 const ANILIST_GRAPHQL_URL = "https://graphql.anilist.co";
-const CHECK_QUERY = `query CheckEntry($mediaId: Int!, $userId: Int!) {
-  media: Media(id: $mediaId) { id type }
-  listEntry: MediaList(mediaId: $mediaId, userId: $userId) { id status progress }
+const CHECK_QUERY = `query CheckEntry($mediaId: Int!) {
+  media: Media(id: $mediaId, type: ANIME) {
+    id
+    type
+    mediaListEntry { id status progress }
+  }
 }`;
-const ADD_QUERY = `mutation AddToPlanning($mediaId: Int!) {
-  SaveMediaListEntry(mediaId: $mediaId, status: PLANNING) { id status progress }
+const LIST_OPTIONS_QUERY = `query {
+  Viewer {
+    mediaListOptions {
+      animeList { customLists }
+    }
+  }
+}`;
+const ADD_QUERY = `mutation AddToPlanning($mediaId: Int!, $customLists: [String]) {
+  SaveMediaListEntry(mediaId: $mediaId, status: PLANNING, customLists: $customLists) { id status progress customLists }
 }`;
 const encoder = new TextEncoder();
 
@@ -94,15 +104,12 @@ Deno.serve(async (request: Request) => {
     }
     if (allowed !== true) return json({ error: "Too many list updates in a short time. Please wait a minute and try again." }, 429, allowedOrigin);
 
-    const [{ data: tokenRow, error: tokenError }, { data: profile, error: profileError }] = await Promise.all([
-      admin.from("anilist_tokens").select("encrypted_token").eq("user_id", user.id).maybeSingle(),
-      admin.from("profiles").select("anilist_id").eq("id", user.id).maybeSingle(),
-    ]);
-    if (tokenError || profileError) {
-      console.error("anilist-add-to-list could not load account data.");
+    const { data: tokenRow, error: tokenError } = await admin.from("anilist_tokens").select("encrypted_token").eq("user_id", user.id).maybeSingle();
+    if (tokenError) {
+      console.error("anilist-add-to-list could not load account token.");
       return json({ error: "Your AniList connection could not be checked just now." }, 503, allowedOrigin);
     }
-    if (!tokenRow?.encrypted_token || !profile?.anilist_id) return reauth(allowedOrigin);
+    if (!tokenRow?.encrypted_token) return reauth(allowedOrigin);
 
     let aniListToken: string;
     try { aniListToken = await decryptAniListToken(user.id, tokenRow.encrypted_token); }
@@ -113,7 +120,7 @@ Deno.serve(async (request: Request) => {
       checkResponse = await fetch(ANILIST_GRAPHQL_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json", Authorization: `Bearer ${aniListToken}` },
-        body: JSON.stringify({ query: CHECK_QUERY, variables: { mediaId, userId: profile.anilist_id } }),
+        body: JSON.stringify({ query: CHECK_QUERY, variables: { mediaId } }),
       });
     } catch { return json({ error: "AniList could not be reached. Please try again." }, 502, allowedOrigin); }
     const checkPayload = await checkResponse.json().catch(() => null) as AniListPayload | null;
@@ -123,7 +130,33 @@ Deno.serve(async (request: Request) => {
     }
     if (!checkPayload.data.media) return json({ error: "That anime could not be found on AniList." }, 404, allowedOrigin);
     if (checkPayload.data.media.type !== "ANIME") return json({ error: "Only anime recommendations can be added here." }, 400, allowedOrigin);
-    if (checkPayload.data.listEntry) return json({ ok: true, already_on_list: true }, 200, allowedOrigin);
+    if (checkPayload.data.media.mediaListEntry) return json({ ok: true, already_on_list: true }, 200, allowedOrigin);
+
+    if (customLists.length) {
+      let optionsResponse: Response;
+      try {
+        optionsResponse = await fetch(ANILIST_GRAPHQL_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json", Authorization: `Bearer ${aniListToken}` },
+          body: JSON.stringify({ query: LIST_OPTIONS_QUERY }),
+        });
+      } catch {
+        return json({ error: "AniList could not load your custom lists just now. Please try again." }, 502, allowedOrigin);
+      }
+      const optionsPayload = await optionsResponse.json().catch(() => null) as AniListPayload & {
+        data?: { Viewer?: { mediaListOptions?: { animeList?: { customLists?: unknown } } | null } | null }
+      } | null;
+      if (isAuthFailure(optionsResponse.status, optionsPayload?.errors)) return reauth(allowedOrigin);
+      if (!optionsResponse.ok || optionsPayload?.errors?.length || !optionsPayload?.data?.Viewer) {
+        return json({ error: "AniList could not load your custom lists just now. Please try again." }, 502, allowedOrigin);
+      }
+      const configured = Array.isArray(optionsPayload.data.Viewer.mediaListOptions?.animeList?.customLists)
+        ? optionsPayload.data.Viewer.mediaListOptions?.animeList?.customLists.filter((name): name is string => typeof name === "string")
+        : [];
+      if (customLists.some((name) => !configured.includes(name))) {
+        return json({ error: "One of those custom lists is no longer available. Refresh the list choices and try again." }, 400, allowedOrigin);
+      }
+    }
 
     // Check first so SaveMediaListEntry never intentionally overwrites an existing status or progress.
     let addResponse: Response;
@@ -131,7 +164,7 @@ Deno.serve(async (request: Request) => {
       addResponse = await fetch(ANILIST_GRAPHQL_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json", Authorization: `Bearer ${aniListToken}` },
-        body: JSON.stringify({ query: ADD_QUERY, variables: { mediaId } }),
+        body: JSON.stringify({ query: ADD_QUERY, variables: { mediaId, customLists: customLists.length ? customLists : null } }),
       });
     } catch { return json({ error: "AniList could not be reached. Please try again." }, 502, allowedOrigin); }
     const addPayload = await addResponse.json().catch(() => null) as AniListPayload | null;
