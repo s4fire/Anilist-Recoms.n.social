@@ -86,9 +86,24 @@ Deno.serve(async (request: Request) => {
   if (!input || typeof input !== "object" || Array.isArray(input)) return json({ error: "Send a recommendation to add." }, 400, allowedOrigin);
   const body = input as Record<string, unknown>;
   const mediaId = body.media_id;
-  if (typeof mediaId !== "number" || !Number.isSafeInteger(mediaId) || mediaId < 1 || mediaId > 2_147_483_647 || Object.keys(body).some((key) => key !== "media_id")) {
+  if (typeof mediaId !== "number" || !Number.isSafeInteger(mediaId) || mediaId < 1 || mediaId > 2_147_483_647) {
     return json({ error: "That AniList anime ID is not valid." }, 400, allowedOrigin);
   }
+  if (Object.keys(body).some((key) => key !== "media_id" && key !== "custom_lists")) {
+    return json({ error: "That AniList list request is not valid." }, 400, allowedOrigin);
+  }
+  const selectedCustomLists = body.custom_lists;
+  if (selectedCustomLists !== undefined && (
+    !Array.isArray(selectedCustomLists)
+    || selectedCustomLists.length > 12
+    || selectedCustomLists.some((name) => typeof name !== "string" || name.trim().length < 1 || name.trim().length > 64)
+    || new Set(selectedCustomLists.map((name) => (name as string).trim())).size !== selectedCustomLists.length
+  )) {
+    return json({ error: "Those AniList custom lists are not valid." }, 400, allowedOrigin);
+  }
+  const customLists = Array.isArray(selectedCustomLists)
+    ? selectedCustomLists.map((name) => (name as string).trim())
+    : [];
 
   try {
     const userHash = await sha256(`anilist-add-to-list:${user.id}`);
