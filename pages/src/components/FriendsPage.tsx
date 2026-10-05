@@ -25,7 +25,7 @@ export default function FriendsPage({ userId, relationships, friends, onChanged,
     let alive = true
     const timer = window.setTimeout(async () => {
       setSearching(true); setError('')
-      const { data, error: searchError } = await client.rpc('search_profiles', { p_query: trimmed })
+      const { data, error: searchError } = await client.from('profile_directory').select('id,username,avatar_url').ilike('username', `%${trimmed}%`).neq('id', userId).limit(12)
       if (!alive) return
       if (searchError) setError(displayError(searchError, 'We couldn’t search AniList neighbors.'))
       setResults((data as Profile[] | null) || [])
