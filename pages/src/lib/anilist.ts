@@ -17,7 +17,7 @@ async function rateSlot() {
   await previous
   const wait = Math.max(0, nextRequestAt - Date.now())
   if (wait) await new Promise((resolve) => window.setTimeout(resolve, wait))
-  nextRequestAt = Date.now() + 700
+  nextRequestAt = Date.now() + 2100
   release()
 }
 
