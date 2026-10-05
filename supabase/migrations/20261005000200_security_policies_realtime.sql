@@ -139,28 +139,12 @@ revoke all on public.rate_limits from anon, authenticated;
 revoke all on function public.consume_auth_rate_limit(text, integer, integer) from public, anon, authenticated;
 grant execute on function public.consume_auth_rate_limit(text, integer, integer) to service_role;
 
-create or replace function public.search_profiles(p_query text)
-returns table (
-  id uuid,
-  username text,
-  avatar_url text
-)
-language sql
-security definer
-set search_path = public, pg_temp
-as $
-  select p.id, p.username, p.avatar_url
-  from public.profiles p
-  where auth.uid() is not null
-    and char_length(btrim(p_query)) >= 2
-    and p.id <> auth.uid()
-    and p.username ilike '%' || btrim(p_query) || '%'
-  order by p.username
-  limit 12;
-$;
+create or replace view public.profile_directory
+with (security_barrier = true)
+as
+select id, username, avatar_url
+from public.profiles;
 
-revoke all on function public.search_profiles(text) from public, anon;
-grant execute on function public.search_profiles(text) to authenticated;
 revoke all on public.profiles, public.friendships, public.messages, public.recommendations from anon, authenticated;
 grant select, update on public.profiles to authenticated;
 grant select, insert, update on public.friendships, public.messages, public.recommendations to authenticated;
