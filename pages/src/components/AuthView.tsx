@@ -21,14 +21,14 @@ export default function AuthView({ issue }: { issue: AuthIssue }) {
   return (
     <main className="auth-page">
       <div className="auth-left">
-        <a className="wordmark" href="#/" aria-label="Morrow home"><span className="brand-mark">m</span>morrow<span className="wordmark-period">.</span></a>
+        <a className="wordmark" href="#/" aria-label="ARNS home"><span className="brand-mark">A</span>ARNS</a>
         <div className="auth-copy">
           <span className="eyebrow">A little closer, episode by episode</span>
           <h1>Good stories<br /><em>travel better</em><br />together.</h1>
           <p>Send a friend a series you love. Pick up the conversation where the credits roll.</p>
           <div className="auth-feature"><span className="tiny-star">✳</span><span>A social companion for your AniList circle.</span></div>
         </div>
-        <footer className="auth-footer">Your watch history stays yours. Morrow is just for the conversation.</footer>
+        <footer className="auth-footer">Your watch history stays yours. ARNS is just for the conversation.</footer>
       </div>
       <div className="auth-art" aria-hidden="true">
         <div className="art-orbit orbit-one" /><div className="art-orbit orbit-two" />
@@ -42,7 +42,7 @@ export default function AuthView({ issue }: { issue: AuthIssue }) {
         <p className="auth-intro">Sign in with AniList to see friends, share recommendations, and talk about what stayed with you.</p>
         {(issue || localIssue) && <div className="auth-error" role="alert"><CircleAlert size={18} /><div><strong>One small detour</strong><p>{issue?.message || localIssue}</p></div></div>}
         <button className="button button-primary signin-button" onClick={() => {
-          if (!beginAniListLogin()) setLocalIssue('Morrow needs its AniList application ID before sign-in can begin. See the setup notes.')
+          if (!beginAniListLogin()) setLocalIssue('ARNS needs its AniList application ID before sign-in can begin. See the setup notes.')
         }}>
           Log in with AniList <ArrowUpRight size={17} />
         </button>
@@ -53,7 +53,7 @@ export default function AuthView({ issue }: { issue: AuthIssue }) {
           <li><span>02</span> No tracking, ratings, or duplicate lists.</li>
           <li><span>03</span> Anime details come straight from AniList.</li>
         </ul>
-        <p className="auth-terms">By continuing, you authorize Morrow to identify your AniList account. Works with AniList; not affiliated with or endorsed by it.</p>
+        <p className="auth-terms">By continuing, you authorize ARNS to identify your AniList account. Works with AniList; not affiliated with or endorsed by it.</p>
       </section>
     </main>
   )

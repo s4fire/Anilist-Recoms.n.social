@@ -4,15 +4,20 @@ export default {
   theme: {
     extend: {
       colors: {
-        paper: '#f2f0e9',
-        ink: '#202522',
-        accent: '#bf6047',
-        moss: '#798477',
-        line: '#dedbd2',
+        bg: 'var(--bg)',
+        surface: 'var(--surface)',
+        'surface-2': 'var(--surface-2)',
+        border: 'var(--border)',
+        text: 'var(--text)',
+        muted: 'var(--muted)',
+        accent: 'var(--accent)',
+        'accent-contrast': 'var(--accent-contrast)',
+        danger: 'var(--danger)',
+        success: 'var(--success)',
       },
       fontFamily: {
-        sans: ['DM Sans', 'sans-serif'],
-        display: ['DM Serif Display', 'serif'],
+        sans: ['Manrope', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        display: ['Manrope', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
       },
     },
   },

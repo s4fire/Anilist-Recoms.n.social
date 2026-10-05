@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { ArrowLeft, ArrowUpRight, BookOpen, Check, ChevronDown, ChevronUp, CornerDownLeft, MessageCircle, MoreHorizontal, Search, Send, Sparkles, X } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import Avatar from './Avatar'
+import AniListListAction from './AniListListAction'
 import { animeTitle, dayLabel, timeLabel } from '../lib/format'
 import { getAnime, searchAnime, type Anime } from '../lib/anilist'
 import { displayError, supabase, type Message, type Profile, type Recommendation } from '../lib/supabase'
@@ -172,13 +173,13 @@ function FeedRecommendation({ item, mine, friend }: { item: Recommendation; mine
   return <motion.article className={`chat-rec-row ${mine ? 'chat-rec-mine' : ''}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
     <div className="chat-rec-label"><Sparkles size={13} />{mine ? `A little something for ${friend.username}` : `${friend.username} thought of you`}</div>
     <div className="chat-rec-card">{anime ? <a href={anime.siteUrl} target="_blank" rel="noreferrer" className="chat-rec-cover"><img src={anime.coverImage.large} alt={`Cover art for ${animeTitle(anime.title)}`} loading="lazy" /></a> : <div className="chat-rec-cover rec-cover-loading"><BookOpen size={18} /></div>}
-      <div className="chat-rec-details"><strong>{anime ? animeTitle(anime.title) : 'AniList recommendation'}</strong><div className="chat-rec-meta">{anime?.averageScore && <span>{anime.averageScore}%</span>}{anime?.format && <span>{anime.format.replaceAll('_', ' ')}</span>}<time>{timeLabel(item.created_at)}</time></div>{item.note && <p>{item.note}</p>}<a href={anime?.siteUrl || `https://anilist.co/anime/${item.anilist_media_id}`} target="_blank" rel="noreferrer">See on AniList <ArrowUpRight size={12} /></a></div>
+      <div className="chat-rec-details"><strong>{anime ? animeTitle(anime.title) : 'AniList recommendation'}</strong><div className="chat-rec-meta">{anime?.averageScore && <span>{anime.averageScore}%</span>}{anime?.format && <span>{anime.format.replaceAll('_', ' ')}</span>}<time>{timeLabel(item.created_at)}</time></div>{item.note && <p>{item.note}</p>}<a href={anime?.siteUrl || `https://anilist.co/anime/${item.anilist_media_id}`} target="_blank" rel="noreferrer">See on AniList <ArrowUpRight size={12} /></a><AniListListAction mediaId={item.anilist_media_id} /></div>
       {item.recipient === item.sender ? null : item.status !== 'unseen' && !mine ? <span className={`tiny-status status-${item.status}`}>{statusLabel(item.status)}</span> : null}
     </div>
   </motion.article>
 }
 
-function statusLabel(status: Recommendation['status']) { return ({ unseen: 'New', watching: 'Adding', watched: 'Seen it', not_for_me: 'Not for me' })[status] }
+function statusLabel(status: Recommendation['status']) { return ({ unseen: 'New', watching: 'Interested', watched: 'Seen it', not_for_me: 'Not for me' })[status] }
 
 function RecommendationComposer({ userId, friendId, friend, onClose, onSent }: { userId: string; friendId: string; friend: Profile; onClose: () => void; onSent: (rec: Recommendation) => void }) {
   const [query, setQuery] = useState('')

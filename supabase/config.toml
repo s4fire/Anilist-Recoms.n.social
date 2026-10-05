@@ -1,4 +1,10 @@
-project_id = "morrow-social-companion"
+project_id = "arns-social-companion"
 
 [functions.auth-anilist]
 verify_jwt = false
+
+[functions.anilist-add-to-list]
+verify_jwt = true
+
+[functions.anilist-disconnect]
+verify_jwt = true

@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
+import { encryptAniListToken, validateTokenEncryptionKey } from "../_shared/token_crypto.ts";
 
 const ANILIST_TOKEN_URL = "https://anilist.co/api/v2/oauth/token";
 const ANILIST_GRAPHQL_URL = "https://graphql.anilist.co";
@@ -75,6 +76,11 @@ Deno.serve(async (request: Request) => {
     if (!clientId || !clientSecret || !supabaseUrl || !serviceRoleKey) {
       console.error("auth-anilist configuration is incomplete.");
       return response({ error: "Sign-in is not ready yet. Please try again later." }, 503, allowedOrigin);
+    }
+    try { await validateTokenEncryptionKey(); }
+    catch {
+      console.error("auth-anilist secure token storage is not configured.");
+      return response({ error: "Secure AniList list access is not ready yet. Please try again later." }, 503, allowedOrigin);
     }
 
     let input: unknown;
@@ -159,7 +165,7 @@ Deno.serve(async (request: Request) => {
         }
         if (!authUserId) {
           console.error("auth-anilist could not establish an auth user.");
-          return response({ error: "We couldn’t create your Morrow account. Please try again." }, 500, allowedOrigin);
+          return response({ error: "We couldn’t create your ARNS account. Please try again." }, 500, allowedOrigin);
         }
       }
     }
@@ -176,15 +182,27 @@ Deno.serve(async (request: Request) => {
       return response({ error: "Your AniList profile could not be refreshed. Please try again." }, 500, allowedOrigin);
     }
 
+    if (!authUserId) return response({ error: "We couldn’t open your ARNS account. Please try again." }, 500, allowedOrigin);
+    const encryptedToken = await encryptAniListToken(authUserId, tokenPayload.access_token);
+    const { error: tokenStoreError } = await admin.from("anilist_tokens").upsert({
+      user_id: authUserId,
+      encrypted_token: encryptedToken,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "user_id" });
+    if (tokenStoreError) {
+      console.error("auth-anilist encrypted token storage failed.");
+      return response({ error: "Your secure AniList connection could not be saved. Please try again." }, 500, allowedOrigin);
+    }
+
     // generateLink creates a single-use Supabase magic-link token without emailing it. Verifying it
     // server-side yields a normal Supabase session; only that session (never the AniList token) leaves this function.
     const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({ type: "magiclink", email });
-    const hashedToken = linkData?.properties?.hashed_token;
-    if (linkError || !hashedToken) {
+    const emailOtp = linkData?.properties?.email_otp;
+    if (linkError || !emailOtp) {
       console.error("auth-anilist Supabase session-link creation failed.");
       return response({ error: "Your account is ready, but sign-in could not be completed. Please try again." }, 500, allowedOrigin);
     }
-    const { data: sessionData, error: sessionError } = await admin.auth.verifyOtp({ email, token: hashedToken, type: "magiclink" });
+    const { data: sessionData, error: sessionError } = await admin.auth.verifyOtp({ email, token: emailOtp, type: "magiclink" });
     if (sessionError || !sessionData.session?.access_token || !sessionData.session.refresh_token) {
       console.error("auth-anilist Supabase session verification failed.");
       return response({ error: "Your account is ready, but the session could not be opened. Please try again." }, 500, allowedOrigin);

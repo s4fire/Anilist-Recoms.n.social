@@ -25,7 +25,7 @@ export default function FriendsPage({ userId, relationships, friends, onChanged,
     let alive = true
     const timer = window.setTimeout(async () => {
       setSearching(true); setError('')
-      const { data, error: searchError } = await client.from('profile_directory').select('id,username,avatar_url').ilike('username', `%${trimmed}%`).neq('id', userId).limit(12)
+      const { data, error: searchError } = await client.from('profiles').select('id,anilist_id,username,avatar_url,banner_url,created_at').ilike('username', `%${trimmed}%`).neq('id', userId).limit(12)
       if (!alive) return
       if (searchError) setError(displayError(searchError, 'We couldn’t search AniList neighbors.'))
       setResults((data as Profile[] | null) || [])
@@ -57,8 +57,8 @@ export default function FriendsPage({ userId, relationships, friends, onChanged,
 
   const resultRelationship = (id: string) => relationships.find((row) => (row.requester === userId && row.addressee === id) || (row.requester === id && row.addressee === userId))
   return <div className="friends-page">
-    <div className="page-heading"><div><span className="eyebrow">MAKE ROOM AT THE TABLE</span><h1>Your people<span className="heading-period">.</span></h1><p>Find Morrow members by the AniList name they already use.</p></div><span className="heading-stamp"><Users size={19} />{friends.length} {friends.length === 1 ? 'friend' : 'friends'}</span></div>
-    <section className="friend-search-panel"><label className="search-box"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search AniList usernames…" aria-label="Search AniList usernames" /><span>AniList</span></label><p className="search-hint">Try a username, not a real name. Search only includes people who have joined Morrow.</p>
+    <div className="page-heading"><div><span className="eyebrow">MAKE ROOM AT THE TABLE</span><h1>Your people<span className="heading-period">.</span></h1><p>Find ARNS members by the AniList name they already use.</p></div><span className="heading-stamp"><Users size={19} />{friends.length} {friends.length === 1 ? 'friend' : 'friends'}</span></div>
+    <section className="friend-search-panel"><label className="search-box"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search AniList usernames…" aria-label="Search AniList usernames" /><span>AniList</span></label><p className="search-hint">Try a username, not a real name. Search only includes people who have joined ARNS.</p>
       {message && <div className="success-message" role="status">{message}</div>}{error && <div className="error-message" role="alert">{error}</div>}
       {query.trim().length >= 2 && <div className="search-results" aria-live="polite">{searching ? <div className="loading-line"><span className="spinner" /> Looking for your people…</div> : results.length ? results.map((person) => {
         const relationship = resultRelationship(person.id)

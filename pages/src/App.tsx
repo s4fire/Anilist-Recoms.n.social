@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState } from 'react'
 import { HashRouter, NavLink, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { BookOpen, ChevronRight, CircleHelp, Compass, LogOut, MessageCircle, Search, Sparkles, Users, X } from 'lucide-react'
+import { BookOpen, ChevronRight, CircleHelp, Compass, LogOut, MessageCircle, Search, Settings2, Sparkles, Users, X } from 'lucide-react'
 import AuthView, { type AuthIssue } from './components/AuthView'
 import Avatar from './components/Avatar'
 import ChatPage from './components/ChatPage'
 import FriendsPage from './components/FriendsPage'
 import InboxPage from './components/InboxPage'
+import SettingsPage from './components/SettingsPage'
+import { ThemeProvider, ThemeQuickToggle } from './components/ThemeProvider'
 import { getUser, type AniListUser } from './lib/anilist'
 import { displayError } from './lib/supabase'
 import { supabase, type Friendship, type Profile } from './lib/supabase'
@@ -93,7 +95,7 @@ function AppHome({ bootstrapIssue }: { bootstrapIssue: AuthIssue }) {
   useEffect(() => { setDrawerOpen(false) }, [location.pathname])
 
   if (!userId) return <AuthView issue={bootstrapIssue} />
-  if (loadingProfile) return <div className="boot-screen"><span className="brand-mark">m</span><span>Finding your corner…</span></div>
+  if (loadingProfile) return <div className="boot-screen"><span className="brand-mark">A</span><span>Finding your corner…</span></div>
 
   async function logout() {
     await supabase?.auth.signOut()
@@ -108,7 +110,7 @@ function AppHome({ bootstrapIssue }: { bootstrapIssue: AuthIssue }) {
       <AnimatePresence>{drawerOpen && <motion.button className="drawer-scrim" aria-label="Close navigation" onClick={() => setDrawerOpen(false)} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} />}</AnimatePresence>
       <aside className={`sidebar ${drawerOpen ? 'sidebar-open' : ''}`}>
         <div className="sidebar-top">
-          <NavLink to="/" className="wordmark"><span className="brand-mark">m</span>morrow<span className="wordmark-period">.</span></NavLink>
+          <NavLink to="/" className="wordmark"><span className="brand-mark">A</span>ARNS</NavLink>
           <span className="sidebar-edition">A companion for AniList</span>
         </div>
         <div className="sidebar-label">YOUR SPACE</div>
@@ -125,15 +127,16 @@ function AppHome({ bootstrapIssue }: { bootstrapIssue: AuthIssue }) {
           </NavLink>) : <div className="sidebar-empty">Your next good conversation is one friend away.</div>}
         </div>
         <div className="sidebar-bottom">
-          <NavLink to="/about" className={({ isActive }) => `nav-link quiet-link ${isActive ? 'nav-active' : ''}`}><CircleHelp size={16} /> How Morrow works</NavLink>
+          <NavLink to="/settings" className={({ isActive }) => `nav-link quiet-link ${isActive ? 'nav-active' : ''}`}><Settings2 size={16} /> Settings</NavLink>
+          <NavLink to="/about" className={({ isActive }) => `nav-link quiet-link ${isActive ? 'nav-active' : ''}`}><CircleHelp size={16} /> How ARNS works</NavLink>
           {profile && <div className="account-row"><Avatar name={profile.username} src={profile.avatar_url} size="sm" /><div className="account-name"><strong>{profile.username}</strong><a href={`https://anilist.co/user/${encodeURIComponent(profile.username)}`} target="_blank" rel="noreferrer">View AniList profile <ChevronRight size={12} /></a></div><button className="icon-button small logout-button" onClick={() => void logout()} aria-label="Log out"><LogOut size={16} /></button></div>}
           {!profile && <div className="account-row account-loading"><span className="skeleton-circle" /> <span>Profile unavailable</span></div>}
         </div>
       </aside>
       <div className="main-column">
         <header className="topbar">
-          <div className="breadcrumb"><span className="breadcrumb-mark">✳</span><span>{location.pathname.startsWith('/chat/') ? 'A good conversation' : location.pathname === '/friends' ? 'Your people' : location.pathname === '/inbox' ? 'A little something for you' : 'A place to share the good stuff'}</span></div>
-          <div className="topbar-right"><span className="connection-indicator"><span /> Works with AniList</span><button className="icon-button mobile-search" onClick={() => navigate('/friends')} aria-label="Find friends"><Search size={17} /></button><button className="icon-button mobile-logout" onClick={() => void logout()} aria-label="Log out"><LogOut size={17} /></button></div>
+          <div className="breadcrumb"><span className="breadcrumb-mark">✳</span><span>{location.pathname.startsWith('/chat/') ? 'A good conversation' : location.pathname === '/friends' ? 'Your people' : location.pathname === '/inbox' ? 'A little something for you' : location.pathname === '/settings' ? 'Your preferences' : 'A place to share the good stuff'}</span></div>
+          <div className="topbar-right"><span className="connection-indicator"><span /> Works with AniList</span><ThemeQuickToggle /><button className="icon-button mobile-search" onClick={() => navigate('/friends')} aria-label="Find friends"><Search size={17} /></button><button className="icon-button mobile-logout" onClick={() => void logout()} aria-label="Log out"><LogOut size={17} /></button></div>
         </header>
         {socialError && <div className="inline-alert" role="status">{socialError}<button onClick={() => void refreshSocial()}>Retry</button></div>}
         <AnimatePresence mode="wait"><motion.main key={location.pathname} className="page-frame" initial={{ opacity: 0, y: 7 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.22, ease: 'easeOut' }}>
@@ -141,6 +144,7 @@ function AppHome({ bootstrapIssue }: { bootstrapIssue: AuthIssue }) {
             <Route path="/" element={<HomePage profile={profile} friends={friends} online={online} />} />
             <Route path="/friends" element={<FriendsPage userId={userId} relationships={relationships} friends={friends} onChanged={refreshSocial} online={online} />} />
             <Route path="/inbox" element={<InboxPage userId={userId} />} />
+            <Route path="/settings" element={<SettingsPage />} />
             <Route path="/chat/:id" element={<ChatRoute userId={userId} friends={friends} online={online} onChanged={refreshSocial} />} />
             <Route path="/about" element={<AboutPage />} />
             <Route path="*" element={<NotFound />} />
@@ -175,10 +179,10 @@ function HomePage({ profile, friends, online }: { profile: Profile | null; frien
   const hours = stats ? Math.floor(stats.statistics.anime.minutesWatched / 60) : 0
   return <div className="home-layout">
     <section className="welcome-panel">
-      {profile?.banner_url && <div className="welcome-banner" style={{ backgroundImage: `linear-gradient(90deg,rgba(28,34,30,.72),rgba(28,34,30,.12)),url(${profile.banner_url})` }} />}
-      <div className="welcome-topline"><span className="eyebrow">A NOTE FROM MORROW</span><span className="today-date">{new Date().toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}</span></div>
+      {profile?.banner_url && <div className="welcome-banner" style={{ backgroundImage: `url(${profile.banner_url})` }} />}
+      <div className="welcome-topline"><span className="eyebrow">A NOTE FROM ARNS</span><span className="today-date">{new Date().toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}</span></div>
       <h1>Good stories<br /><em>travel better</em> together.</h1>
-      <p>Your watchlist lives on AniList. This is where the “you have to see this” conversations happen.</p>
+      <p>Your anime list lives on AniList. This is where the “you have to see this” conversations happen.</p>
       <button className="button button-primary" onClick={() => navigate('/friends')}>Find your people <ChevronRight size={16} /></button>
       <div className="welcome-scribble" aria-hidden="true">✳</div>
     </section>
@@ -200,11 +204,11 @@ function HomePage({ profile, friends, online }: { profile: Profile | null; frien
 }
 
 function AboutPage() {
-  return <section className="simple-page"><span className="eyebrow">A SMALL EXPLANATION</span><h1>Not another<br /><em>watchlist.</em></h1><p className="simple-lede">Morrow is a social layer for the people you already share stories with.</p><div className="about-columns"><article><span>01</span><h3>Your lists stay yours.</h3><p>AniList remains the home for your anime lists, ratings, and progress. Morrow doesn’t duplicate or edit them.</p></article><article><span>02</span><h3>Good things travel.</h3><p>Talk one-to-one, send a friend a recommendation, and let them tell you what they thought.</p></article><article><span>03</span><h3>Details, live from AniList.</h3><p>We keep the AniList media ID needed for a recommendation. Titles and cover art are fetched fresh from AniList.</p></article></div><p className="about-footnote">Morrow works with AniList and is an independent companion. It is not affiliated with or endorsed by AniList.</p></section>
+  return <section className="simple-page"><span className="eyebrow">A SMALL EXPLANATION</span><h1>Not another<br /><em>watchlist.</em></h1><p className="simple-lede">ARNS is a social layer for the people you already share stories with.</p><div className="about-columns"><article><span>01</span><h3>Your lists stay yours.</h3><p>AniList remains the home for your anime lists, ratings, and progress. ARNS never imports your list.</p></article><article><span>02</span><h3>Good things travel.</h3><p>Talk one-to-one, send a friend a recommendation, and let them tell you what they thought.</p></article><article><span>03</span><h3>Details, live from AniList.</h3><p>We keep the AniList media ID needed for a recommendation. Titles and cover art are fetched fresh from AniList.</p></article></div><p className="about-footnote">ARNS works with AniList and is an independent companion. It is not affiliated with or endorsed by AniList.</p></section>
 }
 
 function NotFound() { return <section className="not-found"><Compass size={24} /><span className="eyebrow">A WRONG TURN</span><h1>This page wandered off.</h1><NavLink to="/" className="button button-outline">Back to your space</NavLink></section> }
 
 export default function App({ bootstrapIssue }: { bootstrapIssue: AuthIssue }) {
-  return <HashRouter><AppHome bootstrapIssue={bootstrapIssue} /></HashRouter>
+  return <ThemeProvider><HashRouter><AppHome bootstrapIssue={bootstrapIssue} /></HashRouter></ThemeProvider>
 }

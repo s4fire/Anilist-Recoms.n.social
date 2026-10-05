@@ -5,7 +5,7 @@ import './styles.css'
 import { isSupabaseConfigured, supabase } from './lib/supabase'
 
 const root = createRoot(document.getElementById('root')!)
-root.render(<div className="boot-screen"><span className="brand-mark">m</span><span>Making room for your people…</span></div>)
+root.render(<div className="boot-screen"><span className="brand-mark">A</span><span>Making room for your people…</span></div>)
 
 type OAuthIssue = { message: string; retry?: () => Promise<void> } | null
 
@@ -28,7 +28,7 @@ async function exchangeCode(code: string) {
       body: JSON.stringify({ code, redirect_uri: redirectUri() }),
     })
   } catch {
-    throw new Error('We couldn’t reach Morrow. Check your connection, then try the sign-in again.')
+    throw new Error('We couldn’t reach ARNS. Check your connection, then try the sign-in again.')
   }
   const payload = await response.json().catch(() => ({})) as { access_token?: string; refresh_token?: string; error?: string }
   if (!response.ok || !payload.access_token || !payload.refresh_token) {
@@ -69,7 +69,7 @@ async function start() {
       }
     }
   } else if (!isSupabaseConfigured) {
-    issue = { message: 'Morrow needs its Supabase connection configured before anyone can sign in.' }
+    issue = { message: 'ARNS needs its Supabase connection configured before anyone can sign in.' }
   }
 
   root.render(<React.StrictMode><App bootstrapIssue={issue} /></React.StrictMode>)
