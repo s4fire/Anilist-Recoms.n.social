@@ -1,0 +1,1 @@
+{"routes":[{"path":"/","title":"Morrow"},{"path":"/friends","title":"Friends"},{"path":"/inbox","title":"Recommendations"},{"path":"/chat/:id","title":"Conversation"}]}
