@@ -62,7 +62,7 @@ jobs:
           assert isinstance(body, dict) and isinstance(body.get("error"), str) and body["error"]
           PY
 
-          for fn in anilist-add-to-list anilist-disconnect; do
+          for fn in anilist-add-to-list anilist-disconnect anilist-list-options; do
             status="$(curl -sS -o /tmp/"$fn"-response.txt -w "%{http_code}" \
               -X POST \
               -H "Origin: https://s4fire.github.io" \
