@@ -148,13 +148,6 @@ Deno.serve(async (request: Request) => {
     if (checkPayload.data.media.type !== "ANIME") return json({ error: "Only anime recommendations can be added here." }, 400, allowedOrigin);
     if (checkPayload.data.media.mediaListEntry) return json({ ok: true, already_on_list: true }, 200, allowedOrigin);
 
-    const availableCustomLists = Array.isArray(checkPayload.data.Viewer?.mediaListOptions?.animeList?.customLists)
-      ? checkPayload.data.Viewer?.mediaListOptions?.animeList?.customLists.filter((name): name is string => typeof name === "string")
-      : [];
-    if (customList !== undefined && !availableCustomLists.includes(customList)) {
-      return json({ error: "That custom list is not available on your AniList account." }, 400, allowedOrigin);
-    }
-
     if (customLists.length) {
       let optionsResponse: Response;
       try {
