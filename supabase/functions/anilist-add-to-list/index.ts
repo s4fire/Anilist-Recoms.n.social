@@ -139,6 +139,7 @@ Deno.serve(async (request: Request) => {
     } catch { return json({ error: "AniList could not be reached. Please try again." }, 502, allowedOrigin); }
     const checkPayload = await checkResponse.json().catch(() => null) as AniListPayload | null;
     if (isAuthFailure(checkResponse.status, checkPayload?.errors)) return reauth(allowedOrigin);
+    if (checkResponse.status === 429) return json({ error: "AniList is busy right now. Please try again in a few seconds." }, 429, allowedOrigin);
     if (!checkResponse.ok || checkPayload?.errors?.length || !checkPayload?.data) {
       return json({ error: "AniList could not check this anime just now. Please try again." }, 502, allowedOrigin);
     }
@@ -183,6 +184,7 @@ Deno.serve(async (request: Request) => {
     } catch { return json({ error: "AniList could not be reached. Please try again." }, 502, allowedOrigin); }
     const addPayload = await addResponse.json().catch(() => null) as AniListPayload | null;
     if (isAuthFailure(addResponse.status, addPayload?.errors)) return reauth(allowedOrigin);
+    if (addResponse.status === 429) return json({ error: "AniList is busy right now. Please try again in a few seconds." }, 429, allowedOrigin);
     if (!addResponse.ok || addPayload?.errors?.length || !addPayload?.data?.SaveMediaListEntry) {
       return json({ error: "AniList could not add this anime to Planning. Please try again." }, 502, allowedOrigin);
     }
