@@ -8,3 +8,6 @@ verify_jwt = true
 
 [functions.anilist-disconnect]
 verify_jwt = true
+
+[functions.anilist-list-options]
+verify_jwt = true
