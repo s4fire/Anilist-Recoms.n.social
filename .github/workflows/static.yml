@@ -41,6 +41,38 @@ jobs:
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
         run: npm run build
+      - name: Backend smoke tests
+        env:
+          SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+        run: |
+          set -euo pipefail
+          base="https://cjqojssmgxaugqztdlxd.supabase.co/functions/v1"
+          test_auth="$(curl -sS -o /tmp/auth-response.json -w "%{http_code}" \
+            -X POST \
+            -H "Origin: https://s4fire.github.io" \
+            -H "Content-Type: application/json" \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            --data '{}' \
+            "$base/auth-anilist")"
+          [ "$test_auth" = "400" ]
+          python - <<'PY'
+          import json
+          with open("/tmp/auth-response.json", "r", encoding="utf-8") as f:
+              body = json.load(f)
+          assert isinstance(body, dict) and isinstance(body.get("error"), str) and body["error"]
+          PY
+
+          for fn in anilist-add-to-list anilist-disconnect; do
+            status="$(curl -sS -o /tmp/"$fn"-response.txt -w "%{http_code}" \
+              -X POST \
+              -H "Origin: https://s4fire.github.io" \
+              -H "Content-Type: application/json" \
+              -H "apikey: $SUPABASE_ANON_KEY" \
+              --data '{}' \
+              "$base/$fn")"
+            [ "$status" = "401" ]
+          done
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Upload artifact
