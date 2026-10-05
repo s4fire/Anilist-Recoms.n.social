@@ -131,3 +131,23 @@
 .nav-link:hover{background:var(--surface-hover)}
 @media(max-width:700px){.settings-panel{padding:18px}.theme-grid{gap:9px}.theme-option{padding:9px}.theme-preview{height:54px;padding:0 9px}.list-action{gap:6px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{transition-duration:.01ms!important;animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important}}
+
+.list-action-modal-backdrop{position:fixed;inset:0;z-index:30;display:grid;place-items:center;padding:18px;background:var(--overlay)}
+.list-action-modal{position:relative;width:min(430px,calc(100vw - 28px));max-height:min(620px,calc(100vh - 36px));overflow:auto;padding:22px;background:var(--surface);border:1px solid var(--border);box-shadow:0 18px 55px var(--shadow-soft);border-radius:6px}
+.list-action-modal-close{position:absolute;right:10px;top:10px}
+.list-action-modal h3{font-family:var(--font-display);font-size:25px;line-height:1.1;font-weight:400;margin:7px 28px 7px 0}
+.list-action-modal-copy{color:var(--muted);font-size:10px;line-height:1.55;margin:0 0 15px}
+.list-action-modal-loading,.list-action-modal-empty,.list-action-modal-error{padding:12px;border:1px solid var(--border);background:var(--surface-2);color:var(--muted);font-size:9px;line-height:1.5}
+.list-action-modal-loading{display:flex;align-items:center;gap:8px}
+.list-action-modal-error{display:grid;gap:5px;color:var(--danger)}
+.list-action-modal-error small{color:var(--muted);font-size:8px}
+.list-action-options{display:grid;gap:7px}
+.list-action-options-label{color:var(--muted);font-size:8px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+.list-action-option{display:flex;align-items:center;gap:9px;min-height:32px;padding:7px 9px;background:var(--surface-2);border:1px solid var(--border);cursor:pointer}
+.list-action-option:hover{border-color:var(--accent)}
+.list-action-option input{appearance:none;width:14px;height:14px;flex:none;border:1px solid var(--border);background:var(--surface);border-radius:3px;display:grid;place-items:center}
+.list-action-option input:checked{background:var(--accent);border-color:var(--accent)}
+.list-action-option input:checked:after{content:'✓';font-size:10px;line-height:1;color:var(--accent-contrast)}
+.list-action-option span{font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.list-action-modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+.list-action-modal-actions .button{min-width:105px}
