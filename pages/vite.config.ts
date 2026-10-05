@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   // TODO: replace REPO_NAME with the GitHub repository name before publishing.
-  base: '/REPO_NAME/',
+  base: '/Anilist-Recoms.n.social/',
   plugins: [react()],
   build: {
     rollupOptions: {
