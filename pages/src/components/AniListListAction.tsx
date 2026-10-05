@@ -7,7 +7,7 @@ type ActionState = 'idle' | 'loading' | 'success' | 'already' | 'error' | 'reaut
 type AddResponse = { ok: true; already_on_list?: boolean }
 type ListOptionsResponse = { custom_lists: string[] }
 
-export default function AniListListAction({ mediaId }: { mediaId: number }) {
+export default function AniListListAction({ mediaId, allowRepeat = false }: { mediaId: number; allowRepeat?: boolean }) {
   const [state, setState] = useState<ActionState>('idle')
   const [message, setMessage] = useState('')
   const [popupOpen, setPopupOpen] = useState(false)
@@ -17,7 +17,7 @@ export default function AniListListAction({ mediaId }: { mediaId: number }) {
   const [listsError, setListsError] = useState('')
 
   async function openAddChoice() {
-    if (state === 'loading' || state === 'success' || state === 'already') return
+    if (state === 'loading' || state === 'success' || (state === 'already' && !allowRepeat)) return
     setMessage('')
     setListsError('')
     setSelectedCustomLists([])
@@ -49,7 +49,7 @@ export default function AniListListAction({ mediaId }: { mediaId: number }) {
   }
 
   async function addToAniList(customListsToApply: string[]) {
-    if (state === 'loading' || state === 'success' || state === 'already') return
+    if (state === 'loading' || state === 'success' || (state === 'already' && !allowRepeat)) return
     setPopupOpen(false)
     setState('loading')
     setMessage('')
@@ -76,7 +76,9 @@ export default function AniListListAction({ mediaId }: { mediaId: number }) {
   return <div className={`list-action list-action-${state}`}>
     <p className="list-action-note">Adds to Planning on AniList. Custom lists are optional.</p>
     {state === 'success' ? <span className="list-action-result" role="status"><Check size={14} /> On your list</span>
-      : state === 'already' ? <span className="list-action-result" role="status"><Check size={14} /> Already on your list</span>
+      : state === 'already' ? allowRepeat
+        ? <button className="button button-outline button-small" onClick={() => void addToAniList([])}><Check size={14} /> Already added · check again</button>
+        : <span className="list-action-result" role="status"><Check size={14} /> Already on your list</span>
         : state === 'loading' ? <button className="button button-outline button-small" disabled aria-live="polite"><span className="spinner" /> Adding to AniList…</button>
           : state === 'reauth' ? <><p className="list-action-error" role="alert"><CircleAlert size={13} />{message}</p><button className="button button-primary button-small" onClick={reauthorize}>Log in with AniList again <ArrowUpRight size={13} /></button></>
             : <><button className="button button-outline button-small" onClick={() => void openAddChoice()}><ListPlus size={14} />{state === 'error' ? 'Try again' : 'Add to my AniList'}</button>{state === 'error' && <p className="list-action-error" role="alert"><CircleAlert size={13} />{message}</p>}</>}
