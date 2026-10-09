@@ -1,10 +1,10 @@
 # ARNS — GitHub Pages frontend
 
-ARNS is a social companion for AniList: friends, conversations, recommendations, shared Watch Next queues, and anime discussion threads. AniList remains the source of truth for anime lists, ratings, and progress. ARNS stores media IDs and social replies, not an imported anime library.
+ARNS is a social companion for AniList: friends, conversations, recommendations, shared Watch Next queues, anime discussion threads, communities, and synchronized watch rooms. AniList remains the source of truth for anime lists, ratings, and progress. ARNS stores media IDs and social replies, not an imported anime library.
 
 ## Local setup
 
-1. Copy `.env.example` to `.env.local` and fill the three public build-time values below.
+1. Copy `.env.example` to `.env.local`, fill the three required public build-time values, and optionally set the Dailymotion Player ID.
 2. Install Node.js 20+ and run:
 
    ```bash
@@ -14,7 +14,7 @@ ARNS is a social companion for AniList: friends, conversations, recommendations,
 
 3. Apply and deploy the Supabase migrations and Edge Functions from the companion `supabase/` folder before testing sign-in or social features.
 
-Community discovery, channels, member moderation, public-read custom emoji, report review, account blocking/deletion, and plain-language policy drafts are documented in `HANDOFF-PAGES.md` and `../supabase/HANDOFF-SERVER.md`. Emoji files can only be written through the validated `emoji-upload` Edge Function.
+Community discovery, channels, member moderation, public-read custom emoji, report review, account blocking/deletion, watch room adapters, and plain-language policy drafts are documented in `HANDOFF-PAGES.md` and `../supabase/HANDOFF-SERVER.md`. Emoji files can only be written through the validated `emoji-upload` Edge Function.
 
 ## GitHub Pages
 
@@ -33,6 +33,7 @@ Community discovery, channels, member moderation, public-read custom emoji, repo
 | `VITE_ANILIST_CLIENT_ID` | Public AniList OAuth application ID used to start authorization | No |
 | `VITE_SUPABASE_URL` | Supabase project URL used for Auth, Realtime, and Edge Function calls | No |
 | `VITE_SUPABASE_ANON_KEY` | Public Supabase anon/publishable key used by the browser client and function requests | No; restricted by RLS and function logic |
+| `VITE_DAILYMOTION_PLAYER_ID` | Optional public Player ID from Dailymotion Studio | No |
 
 Never put `ANILIST_CLIENT_SECRET`, `TOKEN_ENCRYPTION_KEY`, or `SUPABASE_SERVICE_ROLE_KEY` in the frontend, `.env.example`, or GitHub Pages variables.
 
@@ -49,5 +50,6 @@ Every recommendation card has an **Add to my AniList** action with the nearby no
 - `anilist-disconnect` deletes only the signed-in user's encrypted token row. It does not delete social data or change AniList list entries.
 - Friend, message, recommendation, and token access are protected by server-side RLS and explicit grants. The browser cannot read the token vault or `rate_limits`.
 - Public AniList GraphQL requests provide profile snapshots and media search. Search is debounced and responses are cached only in the current tab's memory for a short time.
+- Watch Together stores only AniList media IDs/episode numbers, room settings, and chat. YouTube, Vimeo, Twitch, and Dailymotion use their official embeds. Direct/HLS rooms require the host’s rights confirmation; External sync keeps playback in each participant’s own provider app.
 - Recommendation history, shared queues, anime threads, courtesy spoiler blur, and client-only taste comparison are documented in [`HANDOFF-PAGES.md`](HANDOFF-PAGES.md). Public list comparison and spoiler progress checks remain in browser memory and are never written to Supabase.
 - ARNS is an independent companion and is not affiliated with or endorsed by AniList.

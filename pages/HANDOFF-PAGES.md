@@ -4,8 +4,8 @@
 
 1. The Vite project-site base is set to `/Anilist-Recoms.n.social/` for `s4fire/Anilist-Recoms.n.social`. If the repository uses a custom Pages domain, change `base` in `vite.config.ts` to `/` before building.
 2. With the default GitHub Pages hostname, set AniList's OAuth redirect URI to the exact URL `https://s4fire.github.io/Anilist-Recoms.n.social/` (including path and trailing slash). For a custom domain, use the matching root URL instead.
-3. Apply the eleven ordered Supabase migrations and deploy the nine configured Edge Functions as described in `supabase/HANDOFF-SERVER.md` before testing the frontend.
-4. Set the three frontend build values in local `.env.local` or GitHub Actions repository variables/secrets. `VITE_` values are public in the compiled client by definition.
+3. Apply the twelve ordered Supabase migrations and deploy the ten configured Edge Functions as described in `supabase/HANDOFF-SERVER.md` before testing the frontend.
+4. Set the three required frontend build values in local `.env.local` or GitHub Actions repository variables/secrets. Set `VITE_DAILYMOTION_PLAYER_ID` only if you want to enable that adapter. `VITE_` values are public in the compiled client by definition.
 5. Set Supabase Edge Function `ALLOWED_ORIGIN` to the website **origin only**: `https://s4fire.github.io` for the default Pages URL (no repository path and no trailing slash).
 6. In GitHub **Settings → Pages**, use **GitHub Actions**. The included workflow builds `main` and deploys `dist/`.
 
@@ -16,8 +16,19 @@
 | `VITE_ANILIST_CLIENT_ID` | Yes | Starts AniList's `/api/v2/oauth/authorize` flow; it is public. |
 | `VITE_SUPABASE_URL` | Yes | Creates the public Supabase client and Edge Function URLs. |
 | `VITE_SUPABASE_ANON_KEY` | Yes | Browser `apikey` header and public Supabase client; it is not a service key. |
+| `VITE_DAILYMOTION_PLAYER_ID` | No | Public Dailymotion Studio Player ID used to initialize its official Web SDK player. |
 
-`.env.example` contains empty values only. `.gitignore` excludes real `.env*` files, dependencies, and build output. Never put the AniList client secret, encryption key, or Supabase service-role key in this frontend package or a `VITE_` value.
+`.env.example` contains empty public values only. `.gitignore` excludes real `.env*` files, dependencies, and build output. Never put the AniList client secret, encryption key, or Supabase service-role key in this frontend package or a `VITE_` value.
+
+## Phase 3 watch rooms
+
+- Start at `/watch-together`, choose an anime using AniList search, select an episode and one of the supported room modes, then share the invite link or choose friends/community access.
+- `watch_rooms` stores the AniList media ID and episode, adapter name, provider/direct URL, room access and authoritative playback state. `watch_room_members` authorizes room access; Presence is the live participant list. `room_messages` is separate from direct messages.
+- Only the current host can write room state under RLS. A verified `watch-room` Edge Function handles room creation, access checks, host transfer, leave, and rate-limited room chat. Host transfer is checked against current room membership.
+- YouTube, Vimeo, Twitch, and Dailymotion use provider SDK embeds; provider settings and embedding restrictions are honored. Twitch requires `parent` to match the deployed domain and its player requires a sufficiently wide viewport. Dailymotion requires the public `VITE_DAILYMOTION_PLAYER_ID` value.
+- Direct file/HLS links are HTTPS and require the host to confirm they have rights to play the content. Cross-origin HLS servers must permit browser CORS. External sync embeds no video; AniList external links are shown when available and each person uses their own legal stream.
+- Player controls update shared state only on play, pause, seek, or episode change. Clients estimate the room clock locally and correct drift above about 1.5 seconds; they do not write timer ticks.
+- Provider research and terms notes are in [`../RESEARCH.md`](../RESEARCH.md). No resolver, scraper, screen sharing, or subscription-service rebroadcast is included.
 
 ## Function contracts used by the frontend
 
