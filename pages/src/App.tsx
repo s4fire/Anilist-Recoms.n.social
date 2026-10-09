@@ -1,12 +1,17 @@
 import { useCallback, useEffect, useState } from 'react'
 import { HashRouter, NavLink, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { BookOpen, ChevronRight, CircleHelp, Compass, LogOut, MessageCircle, Search, Settings2, Sparkles, Users, X } from 'lucide-react'
+import { BookOpen, ChevronRight, CircleHelp, Compass, History, ListPlus, LogOut, MessageCircle, Search, Settings2, Sparkles, Users, X } from 'lucide-react'
 import AuthView, { type AuthIssue } from './components/AuthView'
 import Avatar from './components/Avatar'
 import ChatPage from './components/ChatPage'
 import FriendsPage from './components/FriendsPage'
 import InboxPage from './components/InboxPage'
+import RecommendationHistoryPage from './components/RecommendationHistoryPage'
+import QueuesPage from './components/QueuesPage'
+import AnimeThreadsPage from './components/AnimeThreadsPage'
+import ThreadPage from './components/ThreadPage'
+import TasteComparePage from './components/TasteComparePage'
 import SettingsPage from './components/SettingsPage'
 import { ThemeProvider, ThemeQuickToggle } from './components/ThemeProvider'
 import { getUser, type AniListUser } from './lib/anilist'
@@ -118,6 +123,8 @@ function AppHome({ bootstrapIssue }: { bootstrapIssue: AuthIssue }) {
           <NavLink to="/" end className={({ isActive }) => `nav-link ${isActive ? 'nav-active' : ''}`}><MessageCircle size={17} /> Conversations</NavLink>
           <NavLink to="/friends" className={({ isActive }) => `nav-link ${isActive ? 'nav-active' : ''}`}><Users size={17} /> Friends</NavLink>
           <NavLink to="/inbox" className={({ isActive }) => `nav-link ${isActive ? 'nav-active' : ''}`}><BookOpen size={17} /> Recommendations {inboxCount > 0 && <span className="nav-count">{inboxCount}</span>}</NavLink>
+          <NavLink to="/recommendation-history" className={({ isActive }) => `nav-link ${isActive ? 'nav-active' : ''}`}><History size={17} /> History</NavLink>
+          <NavLink to="/queues" className={({ isActive }) => `nav-link ${isActive ? 'nav-active' : ''}`}><ListPlus size={17} /> Watch Next</NavLink>
         </nav>
         <div className="sidebar-section-heading"><span>YOUR PEOPLE</span><button className="icon-button small" onClick={() => navigate('/friends')} aria-label="Add a friend"><span className="plus-icon">+</span></button></div>
         <div className="friend-list">
@@ -135,7 +142,7 @@ function AppHome({ bootstrapIssue }: { bootstrapIssue: AuthIssue }) {
       </aside>
       <div className="main-column">
         <header className="topbar">
-          <div className="breadcrumb"><span className="breadcrumb-mark">✳</span><span>{location.pathname.startsWith('/chat/') ? 'A good conversation' : location.pathname === '/friends' ? 'Your people' : location.pathname === '/inbox' ? 'A little something for you' : location.pathname === '/settings' ? 'Your preferences' : 'A place to share the good stuff'}</span></div>
+          <div className="breadcrumb"><span className="breadcrumb-mark">✳</span><span>{location.pathname.startsWith('/chat/') ? 'A good conversation' : location.pathname === '/friends' ? 'Your people' : location.pathname === '/inbox' ? 'A little something for you' : location.pathname.startsWith('/recommendation-history') ? 'The stories you passed along' : location.pathname.startsWith('/queues') ? 'Something to watch together' : location.pathname.startsWith('/anime/') || location.pathname.startsWith('/threads/') ? 'Talk about a good story' : location.pathname.startsWith('/compare/') ? 'Two lists, side by side' : location.pathname === '/settings' ? 'Your preferences' : 'A place to share the good stuff'}</span></div>
           <div className="topbar-right"><span className="connection-indicator"><span /> Works with AniList</span><ThemeQuickToggle /><button className="icon-button mobile-search" onClick={() => navigate('/friends')} aria-label="Find friends"><Search size={17} /></button><button className="icon-button mobile-logout" onClick={() => void logout()} aria-label="Log out"><LogOut size={17} /></button></div>
         </header>
         {socialError && <div className="inline-alert" role="status">{socialError}<button onClick={() => void refreshSocial()}>Retry</button></div>}
@@ -144,6 +151,11 @@ function AppHome({ bootstrapIssue }: { bootstrapIssue: AuthIssue }) {
             <Route path="/" element={<HomePage profile={profile} friends={friends} online={online} />} />
             <Route path="/friends" element={<FriendsPage userId={userId} relationships={relationships} friends={friends} onChanged={refreshSocial} online={online} />} />
             <Route path="/inbox" element={<InboxPage userId={userId} />} />
+            <Route path="/recommendation-history" element={<RecommendationHistoryPage userId={userId} />} />
+            <Route path="/queues" element={<QueuesPage userId={userId} />} />
+            <Route path="/anime/:mediaId/threads" element={<AnimeThreadsPage />} />
+            <Route path="/threads/:threadId" element={<ThreadPage userId={userId} anilistId={profile?.anilist_id || 0} />} />
+            <Route path="/compare/:friendId" element={profile ? <TasteComparePage userAnilistId={profile.anilist_id} /> : <div className="empty-panel">Your AniList profile isn’t available yet. Try again in a moment.</div>} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/chat/:id" element={<ChatRoute userId={userId} friends={friends} online={online} onChanged={refreshSocial} />} />
             <Route path="/about" element={<AboutPage />} />

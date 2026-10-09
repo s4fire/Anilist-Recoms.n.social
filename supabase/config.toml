@@ -11,3 +11,9 @@ verify_jwt = true
 
 [functions.anilist-list-options]
 verify_jwt = true
+
+[functions.thread-create]
+verify_jwt = true
+
+[functions.thread-post]
+verify_jwt = true

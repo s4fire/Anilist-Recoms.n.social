@@ -4,7 +4,7 @@
 
 1. The Vite project-site base is set to `/Anilist-Recoms.n.social/` for `s4fire/Anilist-Recoms.n.social`. If the repository uses a custom Pages domain, change `base` in `vite.config.ts` to `/` before building.
 2. With the default GitHub Pages hostname, set AniList's OAuth redirect URI to the exact URL `https://s4fire.github.io/Anilist-Recoms.n.social/` (including path and trailing slash). For a custom domain, use the matching root URL instead.
-3. Apply the three ordered Supabase migrations and deploy the three Edge Functions as described in `supabase/HANDOFF-SERVER.md` before testing the frontend.
+3. Apply the five ordered Supabase migrations and deploy the six configured Edge Functions as described in `supabase/HANDOFF-SERVER.md` before testing the frontend.
 4. Set the three frontend build values in local `.env.local` or GitHub Actions repository variables/secrets. `VITE_` values are public in the compiled client by definition.
 5. Set Supabase Edge Function `ALLOWED_ORIGIN` to the website **origin only**: `https://s4fire.github.io` for the default Pages URL (no repository path and no trailing slash).
 6. In GitHub **Settings → Pages**, use **GitHub Actions**. The included workflow builds `main` and deploys `dist/`.
@@ -52,6 +52,15 @@
 - **Palette:** one clear accent per theme, cool neutral surfaces, visible borders, and dedicated semantic success/danger colors. Cover art remains the only intentionally image-driven color source; the UI uses no background gradients.
 - **Layout:** the existing friend rail, conversation canvas, recommendation inbox, composer, and mobile navigation remain in place. A Settings route now contains theme selection and list-access disconnect.
 - **Motion:** 240 ms theme color transitions respect `prefers-reduced-motion` alongside the existing presence/message transitions.
+
+## Phase 1 anime-aware social core
+
+- Recommendations use `unseen`, `on_my_list`, `seen`, and `not_for_me`. The history page filters sent/received recommendations and reply state. Reason tags, similar-to media IDs, and optional notes are stored; titles and covers are fetched live.
+- Watch Next queues are shared social lists only. They store AniList media IDs, who added an item, priority, and `up_next`/`done`; the existing Add to AniList action still uses its server-only token vault and only adds new items to Planning.
+- Anime discussion threads store media IDs and optional episode boundaries. `thread-create` and `thread-post` require Supabase user JWTs and rate-limit; replies use Realtime and paginated reads.
+- Episode spoiler blur checks the current viewer’s AniList public progress in memory. Missing, private, or unavailable progress keeps tagged posts blurred until the viewer taps to reveal. This is a courtesy, not access control.
+- Taste comparison fetches each public list directly from AniList GraphQL with paginated, short-lived in-memory caching and request pacing. The comparison results are not written to Supabase.
+- AniList documents a limit of 90 GraphQL requests per minute; the frontend keeps its existing slower request pacing and retries one 429 according to `Retry-After`.
 
 ## Deliberate scope boundaries
 

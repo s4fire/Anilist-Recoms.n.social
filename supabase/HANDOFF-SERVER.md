@@ -10,6 +10,8 @@ Everything in this package lives under `supabase/`; extract it at the repository
 | `friendships` | One unordered pair per row, requester/addressee, `pending` / `accepted` / `declined`, and creation time. Either participant can start a fresh request after decline. |
 | `messages` | Sender, recipient, length-limited body, creation time, and recipient-set `read_at`. |
 | `recommendations` | Sender, recipient, AniList media ID, optional <=280-character note, recipient social reply state, and creation time. No titles, covers, descriptions, or copied AniList list state. |
+| `queues`, `queue_members`, `queue_items` | Shared queue names, visibility/membership, AniList media IDs, priority, social completion state, and attribution. Personal queues remain on AniList. |
+| `threads`, `thread_posts` | Anime media IDs, optional episode boundaries, user-authored thread titles and replies. Spoiler progress is never stored. |
 | `anilist_tokens` | One row per auth user containing versioned AES-256-GCM ciphertext for the AniList access token, plus timestamps. Its key exists only as an Edge Function secret. |
 | `rate_limits` | Short-window counters keyed by one-way SHA-256 hashes of source IPs or namespaced user IDs. Raw IPs and user IDs are not stored. |
 
@@ -19,6 +21,8 @@ Everything in this package lives under `supabase/`; extract it at the repository
 - **Friendships:** only participants can read a row. A user may create a pending request only as requester; the addressee may accept or decline it. After decline, either participant can start a fresh request, with a constrained reversal of requester/addressee.
 - **Messages:** only sender and recipient can read. A sender can insert only into an accepted friendship; the recipient alone may update `read_at`. Triggers reject changes to message identity/body/time.
 - **Recommendations:** only sender and recipient can read. A sender can insert only between accepted friends, initially `unseen`; the recipient alone may update its social reply. Triggers reject changes to media ID, note, participants, ID, and creation time.
+- **Queues:** owners control queue visibility and invited members; private queues are visible only to owners and invitees. Accepted friends can see and contribute to friends-visible queues. Item attribution is immutable, and a claimed recommender must match a recommendation received by the adder for that media ID.
+- **Anime threads:** signed-in users can read threads and replies. Writes are revoked from browser roles and pass through `thread-create` / `thread-post`, which validate the Supabase JWT, set authors from the verified user, check `ALLOWED_ORIGIN`, and rate-limit with the private counter RPC. A narrow read-only RPC returns only usernames and avatars for participants in a public thread.
 - **Rate limits:** RLS is enabled; browser roles have no table grants or policies. Only server functions call the atomic rate-limit RPC.
 - **AniList token vault:** RLS is enabled and there are intentionally no policies; all privileges are revoked from `PUBLIC`, `anon`, and `authenticated`. Only `service_role` has the CRUD grants used by Edge Functions. No browser query can read or modify ciphertext.
 - There are no client delete policies. Messages, recommendations, and friendships are in `supabase_realtime` for live updates.
@@ -65,7 +69,7 @@ For the default GitHub Pages URL, set `ALLOWED_ORIGIN` to `https://s4fire.github
 
 ## Deploy order
 
-1. **Review and apply all three migrations, in filename order.** From the combined repository root, link the intended Supabase project and apply them:
+1. **Review and apply all five ordered migrations, in filename order.** From the combined repository root, link the intended Supabase project and apply them:
 
    ```bash
    supabase login
@@ -80,14 +84,24 @@ For the default GitHub Pages URL, set `ALLOWED_ORIGIN` to `https://s4fire.github
    supabase functions deploy auth-anilist
    ```
 
-4. **Deploy the two authenticated list-access functions:**
+4. **Deploy the authenticated AniList list-access functions:**
 
    ```bash
    supabase functions deploy anilist-add-to-list
    supabase functions deploy anilist-disconnect
+   supabase functions deploy anilist-list-options
    ```
 
-5. Configure the three frontend `VITE_` build values, GitHub Pages, and the exact AniList callback in `HANDOFF-PAGES.md`, then deploy the static site.
-6. Smoke-test OAuth/token storage, friend requests, accepted-friend chat, recommendations/replies, add-to-Planning for a new anime, existing-list detection without status/progress changes, invalid-token reauthorization, and disconnect. Confirm as an authenticated browser role that `anilist_tokens` and `rate_limits` are unreadable and unwritable.
+5. **Deploy the rate-limited discussion write functions:**
+
+   ```bash
+   supabase functions deploy thread-create
+   supabase functions deploy thread-post
+   ```
+
+6. Configure the three frontend `VITE_` build values, GitHub Pages, and the exact AniList callback in `HANDOFF-PAGES.md`, then deploy the static site.
+7. Smoke-test OAuth/token storage, friend requests, accepted-friend chat, recommendation history/replies, queue membership and edits, thread pagination/realtime/rate limits/spoiler blur, taste comparison with public and private lists, add-to-Planning for a new anime, existing-list detection without status/progress changes, invalid-token reauthorization, and disconnect. Confirm as an authenticated browser role that `anilist_tokens` and `rate_limits` are unreadable and unwritable.
+
+Phase 1 adds no Storage bucket and no new function secret. The existing `ALLOWED_ORIGIN` secret is required by both thread functions.
 
 No migration, secret, function, or Pages setting is deployed by this source package. Review and test in a development Supabase project first.

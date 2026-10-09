@@ -1,6 +1,6 @@
 # ARNS — GitHub Pages frontend
 
-ARNS is a social companion for AniList: friends, conversations, and recommendations. AniList remains the source of truth for anime lists, ratings, and progress. ARNS stores recommendation IDs and social replies, not an imported anime library.
+ARNS is a social companion for AniList: friends, conversations, recommendations, shared Watch Next queues, and anime discussion threads. AniList remains the source of truth for anime lists, ratings, and progress. ARNS stores media IDs and social replies, not an imported anime library.
 
 ## Local setup
 
@@ -47,4 +47,5 @@ Every recommendation card has an **Add to my AniList** action with the nearby no
 - `anilist-disconnect` deletes only the signed-in user's encrypted token row. It does not delete social data or change AniList list entries.
 - Friend, message, recommendation, and token access are protected by server-side RLS and explicit grants. The browser cannot read the token vault or `rate_limits`.
 - Public AniList GraphQL requests provide profile snapshots and media search. Search is debounced and responses are cached only in the current tab's memory for a short time.
+- Recommendation history, shared queues, anime threads, courtesy spoiler blur, and client-only taste comparison are documented in [`HANDOFF-PAGES.md`](HANDOFF-PAGES.md). Public list comparison and spoiler progress checks remain in browser memory and are never written to Supabase.
 - ARNS is an independent companion and is not affiliated with or endorsed by AniList.
