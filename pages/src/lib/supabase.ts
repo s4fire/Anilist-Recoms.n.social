@@ -18,6 +18,7 @@ export type Profile = {
   avatar_url: string | null
   banner_url: string | null
   created_at: string
+  is_admin?: boolean
 }
 
 export type Friendship = {
@@ -47,6 +48,7 @@ export type Recommendation = {
   reason_tags: RecommendationReasonTag[]
   similar_to_media_id: number | null
   created_at: string
+  is_admin?: boolean
 }
 
 export type RecommendationReasonTag = 'similar_to_something' | 'great_characters' | 'great_story' | 'great_art_music' | 'short_and_sweet' | 'hidden_gem' | 'comfort_watch' | 'mind_bending'
@@ -56,6 +58,19 @@ export type SharedQueue = { id: string; owner_id: string; name: string; visibili
 export type QueueItem = { id: string; queue_id: string; media_id: number; added_by: string; priority: 1 | 2 | 3; recommended_by: string | null; status: 'up_next' | 'done'; created_at: string }
 export type AnimeThread = { id: string; media_id: number; episode: number | null; title: string; created_by: string; created_at: string }
 export type ThreadPost = { id: string; thread_id: string; author: string; body: string; episode_tag: number | null; created_at: string }
+export type Community = { id: string; slug: string; name: string; description: string; visibility: 'public' | 'unlisted'; created_by: string; created_at: string }
+export type CommunityMember = { community_id: string; member_id: string; role: 'owner' | 'mod' | 'member'; joined_at: string }
+export type CommunityChannel = { id: string; community_id: string; name: string; kind: 'chat' | 'threads'; position: number; media_id: number | null; episode: number | null; created_at: string }
+export type CommunityMessage = { id: string; channel_id: string; author: string; body: string; media_id: number | null; episode: number | null; created_at: string }
+export type CommunityEmoji = { id: string; community_id: string; name: string; path: string; uploaded_by: string; created_at: string; url?: string }
+export type CommunityPerson = { id: string; username: string; avatar_url: string | null; role: 'owner' | 'mod' | 'member' }
+export type CommunityReport = { id: string; reporter: string; community_id: string | null; target_type: 'message' | 'emoji' | 'community'; target_id: string; reason: string; status: 'open' | 'closed'; created_at: string; closed_at: string | null }
+export type ModAction = { id: string; community_id: string | null; actor: string | null; action: string; target_type: string; target_id: string | null; target_user: string | null; reason: string; expires_at: string | null; created_at: string }
+export type CommunitySanction = { id: string; username: string; restriction: 'ban' | 'mute'; reason: string; expires_at: string | null }
+export type WatchAdapter = 'youtube' | 'vimeo' | 'twitch' | 'dailymotion' | 'direct' | 'hls' | 'external'
+export type WatchRoom = { id: string; host_id: string; media_id: number; episode: number; adapter: WatchAdapter; source_ref: string | null; state: 'paused' | 'playing'; position_seconds: number; state_updated_at: string; access: 'invite' | 'friends' | 'community'; community_id: string | null; invite_code?: string | null; created_at: string }
+export type WatchRoomMember = { room_id: string; user_id: string; joined_at: string }
+export type RoomMessage = { id: string; room_id: string; author: string; body: string; created_at: string }
 
 export const RECOMMENDATION_REASONS: Array<{ value: RecommendationReasonTag; label: string }> = [
   { value: 'similar_to_something', label: 'Like something you love' },

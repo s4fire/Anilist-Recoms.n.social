@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowUpRight, Check, Clock3, Search, Sparkles, UserPlus, Users, X } from 'lucide-react'
+import { ArrowUpRight, Ban, Check, Clock3, Search, Sparkles, UserPlus, Users, X } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import Avatar from './Avatar'
 import { displayError, supabase, type Friendship, type Profile } from '../lib/supabase'
@@ -55,6 +55,15 @@ export default function FriendsPage({ userId, relationships, friends, onChanged,
     setBusyId('')
   }
 
+  async function blockPerson(person: Profile) {
+    if (!supabase || !window.confirm(`Block ${person.username}? They won’t be able to message you or send you friend requests.`)) return
+    setBusyId(person.id); setError(''); setMessage('')
+    const { error: blockError } = await supabase.from('user_blocks').insert({ blocker: userId, blocked: person.id })
+    if (blockError && blockError.code !== '23505') setError(displayError(blockError, 'That account couldn’t be blocked just now.'))
+    else { setMessage(`${person.username} is blocked. You can review blocked accounts in Settings.`); await onChanged() }
+    setBusyId('')
+  }
+
   const resultRelationship = (id: string) => relationships.find((row) => (row.requester === userId && row.addressee === id) || (row.requester === id && row.addressee === userId))
   return <div className="friends-page">
     <div className="page-heading"><div><span className="eyebrow">MAKE ROOM AT THE TABLE</span><h1>Your people<span className="heading-period">.</span></h1><p>Find ARNS members by the AniList name they already use.</p></div><span className="heading-stamp"><Users size={19} />{friends.length} {friends.length === 1 ? 'friend' : 'friends'}</span></div>
@@ -68,6 +77,7 @@ export default function FriendsPage({ userId, relationships, friends, onChanged,
         const canRetry = relationship?.status === 'declined'
         return <div className="search-result" key={person.id}><Avatar name={person.username} src={person.avatar_url} size="md" /><div className="result-name"><strong>{person.username}</strong><small>ARNS username · @{person.username}</small></div>
           {isFriend ? <button className="button button-outline button-small" onClick={() => navigate(`/chat/${person.id}`)}>Say hello</button> : isIncoming ? <span className="request-label">They wrote first</span> : isOutgoing ? <span className="request-label"><Clock3 size={14} /> Request sent</span> : <button className="button button-outline button-small" disabled={busyId === person.id || pendingIds.has(person.id)} onClick={() => void sendRequest(person)}><UserPlus size={14} /> {busyId === person.id ? 'Sending…' : canRetry ? 'Ask again' : 'Add friend'}</button>}
+          <button className="icon-button danger-icon" title={`Block ${person.username}`} aria-label={`Block ${person.username}`} disabled={busyId === person.id} onClick={() => void blockPerson(person)}><Ban size={14} /></button>
         </div>
       }) : <div className="empty-search">{query.trim().length < 2 ? 'Keep typing — two letters is enough to begin.' : 'No matching AniList users found. Check the spelling and try again.'}</div>}</div>}
     </section>
