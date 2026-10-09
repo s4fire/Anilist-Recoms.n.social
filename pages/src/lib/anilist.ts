@@ -92,6 +92,15 @@ export async function getUser(id: number) {
   return (await anilist<{ User: AniListUser | null }>(query, { id }, 120_000)).User
 }
 
+export type AnimeExternalLink = { id: number; url: string; site: string }
+export async function getAnimeExternalLinks(id: number) {
+  const query = `query ($id: Int!) { Media(id: $id, type: ANIME) { externalLinks { id url site } } }`
+  const result = await anilist<{ Media: { externalLinks: AnimeExternalLink[] } | null }>(query, { id }, 120_000)
+  return (result.Media?.externalLinks || []).filter((link) => {
+    try { return new URL(link.url).protocol === 'https:' } catch { return false }
+  })
+}
+
 export type PublicListEntry = { mediaId: number; score: number; progress: number; status: string }
 
 export async function getPublicAnimeList(userId: number, onPage?: (page: number) => void) {

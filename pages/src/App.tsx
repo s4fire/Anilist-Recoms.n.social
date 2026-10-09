@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { HashRouter, NavLink, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { BookOpen, ChevronRight, CircleHelp, Compass, History, ListPlus, LogOut, MessageCircle, Search, Settings2, Sparkles, Users, X, ShieldCheck } from 'lucide-react'
+import { BookOpen, ChevronRight, CircleHelp, Compass, History, ListPlus, LogOut, MessageCircle, Search, Settings2, Sparkles, Users, X, ShieldCheck, Clapperboard } from 'lucide-react'
 import AuthView, { type AuthIssue } from './components/AuthView'
 import Avatar from './components/Avatar'
 import ChatPage from './components/ChatPage'
@@ -9,6 +9,8 @@ import FriendsPage from './components/FriendsPage'
 import InboxPage from './components/InboxPage'
 import RecommendationHistoryPage from './components/RecommendationHistoryPage'
 import QueuesPage from './components/QueuesPage'
+import WatchTogetherPage from './components/WatchTogetherPage'
+import WatchRoomPage from './components/WatchRoomPage'
 import AnimeThreadsPage from './components/AnimeThreadsPage'
 import ThreadPage from './components/ThreadPage'
 import TasteComparePage from './components/TasteComparePage'
@@ -132,6 +134,7 @@ function AppHome({ bootstrapIssue }: { bootstrapIssue: AuthIssue }) {
           <NavLink to="/inbox" className={({ isActive }) => `nav-link ${isActive ? 'nav-active' : ''}`}><BookOpen size={17} /> Recommendations {inboxCount > 0 && <span className="nav-count">{inboxCount}</span>}</NavLink>
           <NavLink to="/recommendation-history" className={({ isActive }) => `nav-link ${isActive ? 'nav-active' : ''}`}><History size={17} /> History</NavLink>
           <NavLink to="/queues" className={({ isActive }) => `nav-link ${isActive ? 'nav-active' : ''}`}><ListPlus size={17} /> Watch Next</NavLink>
+          <NavLink to="/watch-together" className={({ isActive }) => `nav-link ${isActive ? 'nav-active' : ''}`}><Clapperboard size={17} /> Watch together</NavLink>
           <NavLink to="/communities" className={({ isActive }) => `nav-link ${isActive ? 'nav-active' : ''}`}><Compass size={17} /> Communities</NavLink>
         </nav>
         <div className="sidebar-section-heading"><span>YOUR PEOPLE</span><button className="icon-button small" onClick={() => navigate('/friends')} aria-label="Add a friend"><span className="plus-icon">+</span></button></div>
@@ -152,7 +155,7 @@ function AppHome({ bootstrapIssue }: { bootstrapIssue: AuthIssue }) {
       </aside>
       <div className="main-column">
         <header className="topbar">
-          <div className="breadcrumb"><span className="breadcrumb-mark">✳</span><span>{location.pathname.startsWith('/chat/') ? 'A good conversation' : location.pathname === '/friends' ? 'Your people' : location.pathname === '/inbox' ? 'A little something for you' : location.pathname.startsWith('/recommendation-history') ? 'The stories you passed along' : location.pathname.startsWith('/queues') ? 'Something to watch together' : location.pathname.startsWith('/anime/') || location.pathname.startsWith('/threads/') ? 'Talk about a good story' : location.pathname.startsWith('/compare/') ? 'Two lists, side by side' : location.pathname === '/settings' ? 'Your preferences' : 'A place to share the good stuff'}</span></div>
+          <div className="breadcrumb"><span className="breadcrumb-mark">✳</span><span>{location.pathname.startsWith('/chat/') ? 'A good conversation' : location.pathname === '/friends' ? 'Your people' : location.pathname === '/inbox' ? 'A little something for you' : location.pathname.startsWith('/recommendation-history') ? 'The stories you passed along' : location.pathname.startsWith('/queues') ? 'Something to watch together' : location.pathname.startsWith('/watch') ? 'A room for your watch night' : location.pathname.startsWith('/anime/') || location.pathname.startsWith('/threads/') ? 'Talk about a good story' : location.pathname.startsWith('/compare/') ? 'Two lists, side by side' : location.pathname === '/settings' ? 'Your preferences' : 'A place to share the good stuff'}</span></div>
           <div className="topbar-right"><span className="connection-indicator"><span /> Works with AniList</span><ThemeQuickToggle /><button className="icon-button mobile-search" onClick={() => navigate('/friends')} aria-label="Find friends"><Search size={17} /></button><button className="icon-button mobile-logout" onClick={() => void logout()} aria-label="Log out"><LogOut size={17} /></button></div>
         </header>
         {socialError && <div className="inline-alert" role="status">{socialError}<button onClick={() => void refreshSocial()}>Retry</button></div>}
@@ -163,6 +166,8 @@ function AppHome({ bootstrapIssue }: { bootstrapIssue: AuthIssue }) {
             <Route path="/inbox" element={<InboxPage userId={userId} />} />
             <Route path="/recommendation-history" element={<RecommendationHistoryPage userId={userId} />} />
             <Route path="/queues" element={<QueuesPage userId={userId} />} />
+            <Route path="/watch-together" element={<WatchTogetherPage userId={userId} />} />
+            <Route path="/watch/rooms/:roomId" element={<WatchRoomPage userId={userId} />} />
             <Route path="/communities" element={<CommunitiesPage userId={userId} />} />
             <Route path="/communities/:communityId" element={<CommunityPage userId={userId} anilistId={profile?.anilist_id || 0} isAdmin={profile?.is_admin === true} />} />
             <Route path="/admin" element={profile?.is_admin ? <AdminPage /> : <NotFound />} />

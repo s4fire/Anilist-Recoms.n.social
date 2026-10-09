@@ -47,6 +47,8 @@ export async function handleThreadWrite(request: Request, kind: WriteKind) {
   const { data: authData, error: authError } = await admin.auth.getUser(bearer);
   const user = authData.user;
   if (authError || !user) return response({ error: "Your session needs a refresh. Please sign in again." }, 401, allowedOrigin);
+  const { data: siteBan } = await admin.from("site_bans").select("user_id").eq("user_id", user.id).maybeSingle();
+  if (siteBan) return response({ error: "This account can’t post to ARNS right now." }, 403, allowedOrigin);
 
   let body: unknown;
   try { body = await request.json(); } catch { return response({ error: "That post didn’t come through. Try again." }, 400, allowedOrigin); }

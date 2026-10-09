@@ -166,122 +166,23 @@ export default function CommunityPage({ userId, isAdmin, anilistId }: { userId: 
   if (!community) return <section className="error-message" role="alert">{error || 'That community isn’t available.'}<Link to="/communities">Back to communities</Link></section>
   return <section className="community-page">
     <Link to="/communities" className="text-button"><ArrowLeft size={14} /> All communities</Link>
-    <header className="community-banner"><div><span className="eyebrow">/{community.slug} · {community.visibility === 'public' ? 'PUBLIC COMMUNI…46590 tokens truncated…eturns trigger language plpgsql security definer set search_path = public, pg_temp as $$
-begin
-  if new.id is distinct from old.id or new.sender is distinct from old.sender
-    or new.recipient is distinct from old.recipient or new.body is distinct from old.body
-    or new.created_at is distinct from old.created_at then
-    raise exception 'Messages are immutable except for recipient read state.' using errcode = '42501';
-  end if;
-  if auth.uid() is null or auth.uid() <> old.recipient then
-    raise exception 'Only the recipient may mark this message read.' using errcode = '42501';
-  end if;
-  return new;
-end;
-$$;
-create trigger messages_guard_update before update on public.messages
-  for each row execute function public.guard_message_update();
-
-create or replace function public.guard_recommendation_update()
-returns trigger language plpgsql security definer set search_path = public, pg_temp as $$
-begin
-  if new.id is distinct from old.id or new.sender is distinct from old.sender
-    or new.recipient is distinct from old.recipient or new.anilist_media_id is distinct from old.anilist_media_id
-    or new.note is distinct from old.note or new.created_at is distinct from old.created_at then
-    raise exception 'Recommendations are immutable except for recipient status.' using errcode = '42501';
-  end if;
-  if auth.uid() is null or auth.uid() <> old.recipient then
-    raise exception 'Only the recipient may reply to this recommendation.' using errcode = '42501';
-  end if;
-  return new;
-end;
-$$;
-create trigger recommendations_guard_update before update on public.recommendations
-  for each row execute function public.guard_recommendation_update();
-
--- Profile lookup is available to signed-in users for username search and friend displays.
-create policy profiles_select_related on public.profiles for select to authenticated
-  using (
-    id = auth.uid()
-    or exists (
-      select 1
-      from public.friendships f
-      where (f.requester = auth.uid() and f.addressee = public.profiles.id)
-         or (f.addressee = auth.uid() and f.requester = public.profiles.id)
-    )
-  );
-create policy profiles_update_owner on public.profiles for update to authenticated using (id = auth.uid()) with check (id = auth.uid());
-
-create policy friendships_select_participants on public.friendships for select to authenticated
-  using (requester = auth.uid() or addressee = auth.uid());
-create policy friendships_insert_requester on public.friendships for insert to authenticated
-  with check (requester = auth.uid() and addressee <> auth.uid() and status = 'pending');
-create policy friendships_update_answer_or_reopen on public.friendships for update to authenticated
-  using ((addressee = auth.uid() and status in ('pending', 'declined')) or (requester = auth.uid() and status = 'declined'))
-  with check ((addressee = auth.uid() and status in ('accepted', 'declined')) or (requester = auth.uid() and status = 'pending'));
-
-create policy messages_select_participants on public.messages for select to authenticated
-  using (sender = auth.uid() or recipient = auth.uid());
-create policy messages_insert_between_friends on public.messages for insert to authenticated
-  with check (
-    sender = auth.uid()
-    and recipient <> auth.uid()
-    and read_at is null
-    and exists (
-      select 1 from public.friendships f
-      where f.status = 'accepted'
-        and ((f.requester = sender and f.addressee = recipient) or (f.requester = recipient and f.addressee = sender))
-    )
-  );
-create policy messages_update_recipient_read_state on public.messages for update to authenticated
-  using (recipient = auth.uid()) with check (recipient = auth.uid());
-
-create policy recommendations_select_participants on public.recommendations for select to authenticated
-  using (sender = auth.uid() or recipient = auth.uid());
-create policy recommendations_insert_between_friends on public.recommendations for insert to authenticated
-  with check (
-    sender = auth.uid()
-    and recipient <> auth.uid()
-    and status = 'unseen'
-    and exists (
-      select 1 from public.friendships f
-      where f.status = 'accepted'
-        and ((f.requester = sender and f.addressee = recipient) or (f.requester = recipient and f.addressee = sender))
-    )
-  );
-create policy recommendations_update_recipient_status on public.recommendations for update to authenticated
-  using (recipient = auth.uid()) with check (recipient = auth.uid());
-
--- The service function is not exposed to browser roles. Keep rate_limits private even to authenticated users.
-revoke all on public.rate_limits from anon, authenticated;
-revoke all on function public.consume_auth_rate_limit(text, integer, integer) from public, anon, authenticated;
-grant execute on function public.consume_auth_rate_limit(text, integer, integer) to service_role;
-
-create or replace view public.profile_directory
-with (security_barrier = true)
-as
-select id, username, avatar_url
-from public.profiles;
-
-revoke all on public.profiles, public.friendships, public.messages, public.recommendations from anon, authenticated;
-grant select, update on public.profiles to authenticated;
-grant select, insert, update on public.friendships, public.messages, public.recommendations to authenticated;
-grant usage on schema public to authenticated;
-
--- Supabase Realtime is used for online presence and these three row-change streams.
-alter table public.friendships replica identity full;
-alter table public.messages replica identity full;
-alter table public.recommendations replica identity full;
-do $$
-begin
-  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'friendships') then
-    execute 'alter publication supabase_realtime add table public.friendships';
-  end if;
-  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'messages') then
-    execute 'alter publication supabase_realtime add table public.messages';
-  end if;
-  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'recommendations') then
-    execute 'alter publication supabase_realtime add table public.recommendations';
-  end if;
-end;
-$$;
+    <header className="community-banner"><div><span className="eyebrow">/{community.slug} · {community.visibility === 'public' ? 'PUBLIC COMMUNITY' : 'UNLISTED COMMUNITY'}</span><h1>{community.name}<span className="heading-period">.</span></h1><p>{community.description || 'A place to trade good stories and talk about what you love.'}</p><small><Users size={13} /> {people.length} {people.length === 1 ? 'member' : 'members'}</small></div><div className="community-actions">
+      {!membership ? <button className="button button-primary" disabled={busy} onClick={() => void join()}>Join community</button> : membership.role !== 'owner' ? <button className="button button-outline" disabled={busy} onClick={() => void leave()}>Leave community</button> : <span className="role-pill"><ShieldCheck size={13} />Owner</span>}
+      <button className="text-button" onClick={() => void reportCommunity()}>Report community</button>
+      {canModerate && <button className="button button-outline" onClick={() => setShowModeration(!showModeration)}><ShieldCheck size={14} />{showModeration ? 'Close moderation' : 'Moderation'}</button>}
+      {((membership?.role === 'owner') || isAdmin) && <button className="icon-button danger-icon" aria-label="Remove community" title="Remove community" onClick={() => void deleteCommunity()}><Trash2 size={15} /></button>}
+    </div></header>
+    {notice && <p className="inline-success" role="status">{notice}</p>}{error && <p className="inline-alert" role="alert">{error}</p>}
+    {showModeration && <ModerationPanel communityId={community.id} canModerate={canModerate} canManageRoles={membership?.role === 'owner'} isAdmin={isAdmin} />}
+    <div className="community-layout"><aside className="community-channel-sidebar"><div className="channel-sidebar-title"><span>CHANNELS</span>{canModerate && <button className="icon-button small" aria-label="Add channel" title="Add channel" onClick={() => setShowChannelForm(!showChannelForm)}><Plus size={14} /></button>}</div>
+      {showChannelForm && <form className="add-channel-form" onSubmit={(event) => void addChannel(event)}><input value={newChannel} onChange={(event) => setNewChannel(event.target.value)} maxLength={32} pattern="[A-Za-z0-9][A-Za-z0-9-]{1,31}" required placeholder="channel-name" aria-label="New channel name" /><label className="form-field">Channel type<select value={newChannelKind} onChange={(event) => setNewChannelKind(event.target.value as 'chat' | 'threads')}><option value="chat">Chat</option><option value="threads">Discussion</option></select></label><button type="button" className="text-button" onClick={() => setShowChannelAnime(!showChannelAnime)}>{newChannelMediaId ? 'Change anime reference' : 'Add anime reference'}</button>{showChannelAnime && <AnimeSearch onSelect={(anime) => { setNewChannelMediaId(anime.id); setShowChannelAnime(false) }} />}{newChannelMediaId && <label className="form-field">Episode (optional)<input value={newChannelEpisode} type="number" min={1} onChange={(event) => setNewChannelEpisode(event.target.value)} placeholder="e.g. 4" /></label>}{newChannelMediaId && <AnimeCard mediaId={newChannelMediaId} episode={newChannelEpisode ? Number(newChannelEpisode) : null} compact />}<button className="button button-outline" disabled={busy}>Add channel</button><small>Up to 20 channels, names use letters, numbers, and hyphens.</small></form>}
+      <nav aria-label="Community channels">{channels.map((channel) => <div key={channel.id} className="community-channel-row"><button className={`community-channel-link ${active?.id === channel.id ? 'is-active' : ''}`} onClick={() => setActiveChannel(channel.id)}><span>{channel.kind === 'chat' ? <Hash size={15} /> : <MessageSquareText size={15} />}{channel.name}</span></button>{canModerate && !['general', 'recommendations'].includes(channel.name) && <button type="button" className="icon-button small channel-remove-button" aria-label={`Remove ${channel.name} channel`} title="Remove channel" onClick={() => void callEdgeFunction('community-moderate', { action: 'delete-channel', community_id: community.id, target_id: channel.id, reason: 'Removed by a community moderator.' }).then(() => { setChannels((current) => current.filter((item) => item.id !== channel.id)); if (active?.id === channel.id) setActiveChannel(channels.find((item) => item.id !== channel.id)?.id || '') }).catch((problem) => setError(problem instanceof EdgeFunctionError ? problem.message : 'That channel couldn’t be removed.'))}><Trash2 size={12} /></button>}</div>)}</nav>
+      <div className="member-mini-list"><span className="eyebrow">PEOPLE HERE</span>{people.slice(0, 8).map((person) => <span key={person.id} className="member-mini"><strong>{person.username}</strong><small>{person.role}</small></span>)}</div>
+    </aside><section className="community-chat-panel"><header className="channel-heading"><div><span className="eyebrow">{community.name}</span><h2>{active ? `${active.kind === 'chat' ? '#' : '↳'} ${active.name}` : 'Channels'}</h2></div>{active?.media_id && <AnimeCard mediaId={active.media_id} episode={active.episode} compact />}</header>
+      <div className="community-message-list" aria-live="polite">{messages.length ? messages.map((message) => { const author = people.find((person) => person.id === message.author); return <article className="community-message" key={message.id}><span className="community-message-avatar">{author?.username.slice(0, 1).toUpperCase() || 'A'}</span><div className="community-message-content"><div className="community-message-meta"><strong>{author?.username || 'Community member'}</strong><time dateTime={message.created_at}>{new Date(message.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</time><button className="text-button report-message-button" onClick={() => { const reason = window.prompt('What should moderators know?')?.trim(); if (!reason) return; void callEdgeFunction('community-moderate', { action: 'report', target_type: 'message', target_id: message.id, reason }).then(() => setNotice('Thanks. Your report is with the moderators.')).catch((problem) => setError(problem instanceof EdgeFunctionError ? problem.message : 'That report couldn’t be sent.')) }}>Report</button>{canModerate && <button className="text-button report-message-button" onClick={() => void callEdgeFunction('community-moderate', { action: 'delete-message', community_id: community.id, target_id: message.id, reason: 'Removed by a community moderator.' }).then(() => setNotice('The message was removed.')).catch((problem) => setError(problem instanceof EdgeFunctionError ? problem.message : 'That message couldn’t be removed.'))}>Remove</button>}</div><p><SpoilerAwareBody mediaId={message.media_id} episode={message.episode} anilistId={anilistId}><MessageBody body={message.body} emojis={emojis} /></SpoilerAwareBody></p>{message.media_id && <AnimeCard mediaId={message.media_id} episode={message.episode} compact />}</div></article> }) : <div className="empty-panel"><div className="empty-icon"><MessageSquareText size={18} /></div><div><strong>{membership ? 'A fresh page.' : 'Have a look around.'}</strong><p>{membership ? 'Start a conversation and make this channel feel like home.' : 'Join to post, or read what the community is talking about.'}</p></div></div>}</div>
+      {membership ? <form className="community-composer" onSubmit={(event) => void send(event)}><textarea value={draft} onChange={(event) => setDraft(event.target.value.slice(0, 2000))} onKeyDown={composerKeyDown} maxLength={2000} rows={2} placeholder={`Message #${active?.name || 'community'}…`} aria-label="Community message" /><div className="community-composer-tools"><EmojiPicker communityId={community.id} emojis={emojis} canManage={canModerate} onPick={insertEmoji} onAdded={(emoji) => setEmojis((current) => [...current, { ...emoji, url: emoji.url || supabase?.storage.from('community-emojis').getPublicUrl(emoji.path).data.publicUrl }])} onRemoved={(id) => setEmojis((current) => current.filter((emoji) => emoji.id !== id))} /><button type="button" className="button button-outline" onClick={() => setShowAnime(!showAnime)}>{mediaId ? 'Change anime' : 'Add anime'}</button><small>{draft.length}/2000 · Shift+Enter for a new line</small><button className="button button-primary" disabled={busy || !draft.trim()}>{busy ? 'Sending…' : 'Send'}</button></div>
+        {showAnime && <div className="community-anime-picker"><AnimeSearch onSelect={(anime) => { setMediaId(anime.id); setShowAnime(false) }} />{mediaId && <label className="form-field">Episode (optional)<input value={episode} type="number" min={1} onChange={(event) => setEpisode(event.target.value)} placeholder="e.g. 4" /></label>}{mediaId && <button type="button" className="text-button" onClick={() => { setMediaId(null); setEpisode('') }}>Remove anime reference</button>}</div>}
+      </form> : <div className="join-to-post">Join this community to post. <button className="text-button" onClick={() => void join()}>Join now</button></div>}
+    </section></div>
+  </section>
+}

@@ -65,7 +65,39 @@ Functions that accept browser requests compare `Origin` with the exact `ALLOWED_
 
 ### `watch-room` — `verify_jwt = true`
 
-- …747 tokens truncated…he intended Supabase project and apply them:
+- **Actions:** `create` checks the AniList ID, episode, provider URL, room access, required community membership, and direct/HLS rights confirmation; `join` verifies the invite code, accepted friendship, or community membership; `transfer` requires the current host and a participant target; `leave` removes a non-host participant; `message` limits chat text to 1,000 characters.
+- **Identity and rate limits:** every actor/author comes from the verified Supabase JWT, never the request JSON. Requests are limited per user with the private rate counter. Inputs are length and format checked; origin must match `ALLOWED_ORIGIN`.
+- **Playback boundary:** the function creates and manages social room rows only. Video is loaded by the browser from the official provider player or host’s direct/HLS URL; External sync stores no external source URL.
+- **Success shapes:** create/join return the room; transfer/leave return `{ "ok": true }`; message returns the saved message. It never logs room URLs, invite codes, chat text, or tokens.
+
+## Supabase Edge Function secrets
+
+Add these names in **Edge Functions → Secrets**; values are not included in this package:
+
+| Secret | Purpose |
+|---|---|
+| `ANILIST_CLIENT_ID` | AniList authorization-code exchange |
+| `ANILIST_CLIENT_SECRET` | Server-only AniList OAuth secret |
+| `ALLOWED_ORIGIN` | Exact website origin only |
+| `TOKEN_ENCRYPTION_KEY` | Base64 encoding of exactly 32 random bytes for AES-256-GCM |
+
+For a fresh key, generate locally with `openssl rand -base64 32`, then store the output only as the Edge Function secret. Do not commit it or place it in frontend environment variables. Changing this key makes already-stored ciphertext unreadable; reconnect users before removing an old key if planned rotation is ever required. Supabase supplies `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` to Edge Functions; do not expose either in the browser.
+
+For the default GitHub Pages URL, set `ALLOWED_ORIGIN` to `https://s4fire.github.io` (no repository path and no trailing slash), while AniList OAuth uses the exact redirect URI `https://s4fire.github.io/Anilist-Recoms.n.social/`. If Pages uses a custom domain, set the matching origin and callback instead.
+
+## Site administrator setup
+
+Set or remove the site-admin flag only through a trusted direct SQL session in the intended Supabase project. Replace the placeholder with the account UUID from the project’s Auth users:
+
+```sql
+update public.profiles set is_admin = true where id = 'ACCOUNT-UUID';
+```
+
+Do not add an application API for this column. The migration revokes authenticated column updates and rejects admin-bit changes from application requests.
+
+## Deploy order
+
+1. **Review and apply all twelve ordered migrations, in filename order.** Phase 2 is split into community schema, moderation/block rules, emoji storage, and supporting foreign-key indexes; Phase 3 adds the watch-room schema. From the combined repository root, link the intended Supabase project and apply them:
 
    ```bash
    supabase login
