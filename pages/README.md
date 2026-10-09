@@ -14,6 +14,8 @@ ARNS is a social companion for AniList: friends, conversations, recommendations,
 
 3. Apply and deploy the Supabase migrations and Edge Functions from the companion `supabase/` folder before testing sign-in or social features.
 
+Community discovery, channels, member moderation, public-read custom emoji, report review, account blocking/deletion, and plain-language policy drafts are documented in `HANDOFF-PAGES.md` and `../supabase/HANDOFF-SERVER.md`. Emoji files can only be written through the validated `emoji-upload` Edge Function.
+
 ## GitHub Pages
 
 - In **Settings → Pages**, select **GitHub Actions** as the build and deployment source.
