@@ -3,9 +3,10 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { ArrowLeft, ArrowUpRight, BookOpen, Check, ChevronDown, ChevronUp, CornerDownLeft, MessageCircle, MoreHorizontal, Search, Send, Sparkles, X } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import Avatar from './Avatar'
+import AnimeSearch from './AnimeSearch'
 import { animeTitle, dayLabel, timeLabel } from '../lib/format'
 import { getAnime, searchAnime, type Anime } from '../lib/anilist'
-import { displayError, supabase, type Message, type Profile, type Recommendation } from '../lib/supabase'
+import { displayError, RECOMMENDATION_REASONS, supabase, type Message, type Profile, type Recommendation, type RecommendationReasonTag } from '../lib/supabase'
 
  type FeedItem = { kind: 'message'; value: Message } | { kind: 'recommendation'; value: Recommendation }
 
@@ -172,17 +173,19 @@ function FeedRecommendation({ item, mine, friend }: { item: Recommendation; mine
   return <motion.article className={`chat-rec-row ${mine ? 'chat-rec-mine' : ''}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
     <div className="chat-rec-label"><Sparkles size={13} />{mine ? `A little something for ${friend.username}` : `${friend.username} thought of you`}</div>
     <div className="chat-rec-card">{anime ? <a href={anime.siteUrl} target="_blank" rel="noreferrer" className="chat-rec-cover"><img src={anime.coverImage.large} alt={`Cover art for ${animeTitle(anime.title)}`} loading="lazy" /></a> : <div className="chat-rec-cover rec-cover-loading"><BookOpen size={18} /></div>}
-      <div className="chat-rec-details"><strong>{anime ? animeTitle(anime.title) : 'AniList recommendation'}</strong><div className="chat-rec-meta">{anime?.averageScore && <span>{anime.averageScore}%</span>}{anime?.format && <span>{anime.format.replaceAll('_', ' ')}</span>}<time>{timeLabel(item.created_at)}</time></div>{item.note && <p>{item.note}</p>}<a href={anime?.siteUrl || `https://anilist.co/anime/${item.anilist_media_id}`} target="_blank" rel="noreferrer">See on AniList <ArrowUpRight size={12} /></a></div>
+      <div className="chat-rec-details"><strong>{anime ? animeTitle(anime.title) : 'AniList recommendation'}</strong><div className="chat-rec-meta">{anime?.averageScore && <span>{anime.averageScore}%</span>}{anime?.format && <span>{anime.format.replaceAll('_', ' ')}</span>}<time>{timeLabel(item.created_at)}</time></div>{item.note && <p>{item.note}</p>}{item.reason_tags?.length > 0 && <div className="reason-chip-list">{item.reason_tags.map((tag) => <span key={tag}>{RECOMMENDATION_REASONS.find((reason) => reason.value === tag)?.label || tag}</span>)}</div>}<a href={anime?.siteUrl || `https://anilist.co/anime/${item.anilist_media_id}`} target="_blank" rel="noreferrer">See on AniList <ArrowUpRight size={12} /></a></div>
       {item.recipient === item.sender ? null : item.status !== 'unseen' && !mine ? <span className={`tiny-status status-${item.status}`}>{statusLabel(item.status)}</span> : null}
     </div>
   </motion.article>
 }
 
-function statusLabel(status: Recommendation['status']) { return ({ unseen: 'New', watching: 'Interested', watched: 'Seen it', not_for_me: 'Not for me' })[status] }
+function statusLabel(status: Recommendation['status']) { return ({ unseen: 'New', on_my_list: 'On my list', seen: 'Seen it', not_for_me: 'Not for me' })[status] }
 
 function RecommendationComposer({ userId, friendId, friend, onClose, onSent }: { userId: string; friendId: string; friend: Profile; onClose: () => void; onSent: (rec: Recommendation) => void }) {
   const [query, setQuery] = useState('')
   const [note, setNote] = useState('')
+  const [reasonTags, setReasonTags] = useState<RecommendationReasonTag[]>([])
+  const [similarTo, setSimilarTo] = useState<Anime | null>(null)
   const [results, setResults] = useState<Anime[]>([])
   const [searching, setSearching] = useState(false)
   const [busyId, setBusyId] = useState<number | null>(null)
@@ -199,14 +202,16 @@ function RecommendationComposer({ userId, friendId, friend, onClose, onSent }: {
     if (!supabase) return
     setBusyId(anime.id); setError(''); setSent('')
 
-    const { data, error: insertError } = await supabase.from('recommendations').insert({ sender: userId, recipient: friendId, anilist_media_id: anime.id, note: note.trim() || null, status: 'unseen' }).select('*').single()
+    const { data, error: insertError } = await supabase.from('recommendations').insert({ sender: userId, recipient: friendId, anilist_media_id: anime.id, note: note.trim() || null, reason_tags: reasonTags, similar_to_media_id: similarTo?.id ?? null, status: 'unseen' }).select('*').single()
     if (insertError) setError(displayError(insertError, 'Your recommendation couldn’t be sent.'))
-    else { onSent(data as Recommendation); setSent('Sent to ' + friend.username + '.'); setQuery(''); setNote(''); setResults([]) }
+    else { onSent(data as Recommendation); setSent('Sent to ' + friend.username + '.'); setQuery(''); setNote(''); setResults([]); setReasonTags([]); setSimilarTo(null) }
     setBusyId(null)
   }
   return <div className="rec-composer">
     <div className="rec-composer-head"><div><span className="eyebrow">PASS A STORY ALONG</span><h3>Recommend to {friend.username}</h3></div><button className="icon-button" onClick={onClose} aria-label="Close recommendation composer"><X size={18} /></button></div>
     <label className="composer-search"><Search size={16} /><input value={query} onChange={(event) => { setQuery(event.target.value); setError('') }} placeholder="Find an anime on AniList…" autoFocus /><span>ANIList</span></label>
+    <fieldset className="recommendation-reasons"><legend>Why this one? <span>Optional</span></legend>{RECOMMENDATION_REASONS.map((reason) => <label key={reason.value}><input type="checkbox" checked={reasonTags.includes(reason.value)} onChange={(event) => setReasonTags((tags) => event.target.checked ? [...tags, reason.value] : tags.filter((tag) => tag !== reason.value))} /><span>{reason.label}</span></label>)}</fieldset>
+    <div className="similar-anime-field"><span className="note-label">Reminds you of <span>Optional</span></span>{similarTo ? <div className="selected-similar"><span>{animeTitle(similarTo.title)}</span><button className="text-button" onClick={() => setSimilarTo(null)}>Remove</button></div> : <AnimeSearch label="Find an anime it reminds you of" placeholder="Search for a similar anime…" onSelect={setSimilarTo} />}</div>
     <label className="note-label" htmlFor="recommendation-note">Add a note <span>Optional · {note.length}/280</span></label><textarea id="recommendation-note" className="note-input" maxLength={280} rows={2} value={note} onChange={(event) => setNote(event.target.value)} placeholder="The ending stayed with me for days…" />
     {error && <div className="error-message" role="alert">{error}</div>}{sent && <div className="success-message" role="status">{sent}</div>}
     <div className="composer-results" aria-live="polite">{searching ? <div className="loading-line"><span className="spinner" /> Looking through AniList…</div> : results.map((anime) => <div className="composer-result" key={anime.id}><img src={anime.coverImage.large} alt="" loading="lazy" /><div><strong>{animeTitle(anime.title)}</strong><small>{anime.format?.replaceAll('_', ' ') || 'Anime'}{anime.averageScore ? ` · ${anime.averageScore}%` : ''}</small></div><button className="button button-outline button-small" disabled={busyId === anime.id} onClick={() => void send(anime)}>{busyId === anime.id ? 'Sending…' : 'Send rec'}</button></div>)}{query.trim().length >= 2 && !searching && results.length === 0 && !error && <p className="empty-search">No anime found. Try another title.</p>}{query.trim().length < 2 && <p className="composer-tip">Search by title. Your friend can tell you what they thought in the inbox.</p>}</div>

@@ -1,0 +1,21 @@
+-- Index foreign-key columns used for profile cleanup, moderator actions, and lookups.
+create index if not exists channel_messages_author_idx on public.channel_messages(author);
+create index if not exists communities_created_by_idx on public.communities(created_by);
+create index if not exists community_bans_actor_idx on public.community_bans(actor);
+create index if not exists community_bans_user_id_idx on public.community_bans(user_id);
+create index if not exists community_emojis_uploaded_by_idx on public.community_emojis(uploaded_by);
+create index if not exists community_members_member_id_idx on public.community_members(member_id);
+create index if not exists community_mutes_actor_idx on public.community_mutes(actor);
+create index if not exists community_mutes_user_id_idx on public.community_mutes(user_id);
+create index if not exists mod_actions_actor_idx on public.mod_actions(actor);
+create index if not exists mod_actions_target_user_idx on public.mod_actions(target_user);
+create index if not exists queue_items_added_by_idx on public.queue_items(added_by);
+create index if not exists queue_items_recommended_by_idx on public.queue_items(recommended_by);
+create index if not exists queue_members_added_by_idx on public.queue_members(added_by);
+create index if not exists queue_members_member_id_idx on public.queue_members(member_id);
+create index if not exists queues_owner_id_idx on public.queues(owner_id);
+create index if not exists reports_reporter_idx on public.reports(reporter);
+create index if not exists site_bans_actor_idx on public.site_bans(actor);
+create index if not exists thread_posts_author_idx on public.thread_posts(author);
+create index if not exists threads_created_by_idx on public.threads(created_by);
+create index if not exists user_blocks_blocked_idx on public.user_blocks(blocked);

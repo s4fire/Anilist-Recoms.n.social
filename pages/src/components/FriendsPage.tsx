@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowUpRight, Check, Clock3, Search, UserPlus, Users, X } from 'lucide-react'
+import { ArrowUpRight, Check, Clock3, Search, Sparkles, UserPlus, Users, X } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import Avatar from './Avatar'
 import { displayError, supabase, type Friendship, type Profile } from '../lib/supabase'
@@ -76,7 +76,7 @@ export default function FriendsPage({ userId, relationships, friends, onChanged,
       {outgoing.map((row) => <RequestRow key={row.id} row={row} userId={userId} incoming={false} onRespond={respond} busy={busyId === row.id} />)}
     </section>}
     <section className="friends-roster"><div className="section-heading"><div><span className="eyebrow">THE PEOPLE YOU CAN MESSAGE</span><h2>Friends</h2></div></div>
-      {friends.length ? <div className="roster-list">{friends.map(({ profile: person }) => <div className="roster-row" key={person.id}><span className="avatar-wrap"><Avatar name={person.username} src={person.avatar_url} size="md" /><i className={`presence-dot ${online.has(person.id) ? 'is-online' : ''}`} /></span><div className="result-name"><strong>{person.username}</strong><small>{online.has(person.id) ? 'Around right now' : 'A good time to say hi'}</small></div><a className="anilist-link" href={`https://anilist.co/user/${encodeURIComponent(person.username)}`} target="_blank" rel="noreferrer">AniList <ArrowUpRight size={13} /></a><button className="button button-primary button-small" onClick={() => navigate(`/chat/${person.id}`)}>Message</button></div>)}</div> : <div className="empty-panel friends-empty"><div className="empty-icon"><Users size={19} /></div><div><strong>It starts with one.</strong><p>Search for a friend above. We’ll keep the seat warm.</p></div></div>}
+      {friends.length ? <div className="roster-list">{friends.map(({ profile: person }) => <div className="roster-row" key={person.id}><span className="avatar-wrap"><Avatar name={person.username} src={person.avatar_url} size="md" /><i className={`presence-dot ${online.has(person.id) ? 'is-online' : ''}`} /></span><div className="result-name"><strong>{person.username}</strong><small>{online.has(person.id) ? 'Around right now' : 'A good time to say hi'}</small></div><a className="anilist-link" href={`https://anilist.co/user/${encodeURIComponent(person.username)}`} target="_blank" rel="noreferrer">AniList <ArrowUpRight size={13} /></a><button className="button button-outline button-small" onClick={() => navigate(`/compare/${person.id}`)}><Sparkles size={13} /> Taste check</button><button className="button button-primary button-small" onClick={() => navigate(`/chat/${person.id}`)}>Message</button></div>)}</div> : <div className="empty-panel friends-empty"><div className="empty-icon"><Users size={19} /></div><div><strong>It starts with one.</strong><p>Search for a friend above. We’ll keep the seat warm.</p></div></div>}
     </section>
   </div>
 }

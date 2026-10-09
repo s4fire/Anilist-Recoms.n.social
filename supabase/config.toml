@@ -11,3 +11,21 @@ verify_jwt = true
 
 [functions.anilist-list-options]
 verify_jwt = true
+
+[functions.thread-create]
+verify_jwt = true
+
+[functions.thread-post]
+verify_jwt = true
+
+[functions.emoji-upload]
+verify_jwt = true
+
+[functions.community-moderate]
+verify_jwt = true
+
+[functions.delete-my-data]
+verify_jwt = true
+
+[functions.watch-room]
+verify_jwt = true

@@ -43,9 +43,30 @@ export type Recommendation = {
   recipient: string
   anilist_media_id: number
   note: string | null
-  status: 'unseen' | 'watching' | 'watched' | 'not_for_me'
+  status: 'unseen' | 'on_my_list' | 'seen' | 'not_for_me'
+  reason_tags: RecommendationReasonTag[]
+  similar_to_media_id: number | null
   created_at: string
 }
+
+export type RecommendationReasonTag = 'similar_to_something' | 'great_characters' | 'great_story' | 'great_art_music' | 'short_and_sweet' | 'hidden_gem' | 'comfort_watch' | 'mind_bending'
+export type AnimeRef = { mediaId: number; episode: number | null }
+
+export type SharedQueue = { id: string; owner_id: string; name: string; visibility: 'private' | 'friends'; created_at: string }
+export type QueueItem = { id: string; queue_id: string; media_id: number; added_by: string; priority: 1 | 2 | 3; recommended_by: string | null; status: 'up_next' | 'done'; created_at: string }
+export type AnimeThread = { id: string; media_id: number; episode: number | null; title: string; created_by: string; created_at: string }
+export type ThreadPost = { id: string; thread_id: string; author: string; body: string; episode_tag: number | null; created_at: string }
+
+export const RECOMMENDATION_REASONS: Array<{ value: RecommendationReasonTag; label: string }> = [
+  { value: 'similar_to_something', label: 'Like something you love' },
+  { value: 'great_characters', label: 'Great characters' },
+  { value: 'great_story', label: 'A great story' },
+  { value: 'great_art_music', label: 'Art & music' },
+  { value: 'short_and_sweet', label: 'Short and sweet' },
+  { value: 'hidden_gem', label: 'Hidden gem' },
+  { value: 'comfort_watch', label: 'Comfort watch' },
+  { value: 'mind_bending', label: 'Mind bending' },
+]
 
 export function displayError(error: unknown, fallback = 'That didn’t work. Please try again.') {
   const message = error instanceof Error ? error.message : ''

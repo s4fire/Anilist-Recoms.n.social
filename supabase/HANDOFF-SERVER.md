@@ -10,6 +10,13 @@ Everything in this package lives under `supabase/`; extract it at the repository
 | `friendships` | One unordered pair per row, requester/addressee, `pending` / `accepted` / `declined`, and creation time. Either participant can start a fresh request after decline. |
 | `messages` | Sender, recipient, length-limited body, creation time, and recipient-set `read_at`. |
 | `recommendations` | Sender, recipient, AniList media ID, optional <=280-character note, recipient social reply state, and creation time. No titles, covers, descriptions, or copied AniList list state. |
+| `queues`, `queue_members`, `queue_items` | Shared queue names, visibility/membership, AniList media IDs, priority, social completion state, and attribution. Personal queues remain on AniList. |
+| `threads`, `thread_posts` | Anime media IDs, optional episode boundaries, user-authored thread titles and replies. Spoiler progress is never stored. |
+| `communities`, `community_members`, `channels`, `channel_messages` | Community settings, member roles, channel metadata, short user-authored messages, and optional AniList media IDs/episode numbers. |
+| `reports`, `mod_actions`, `community_bans`, `community_mutes`, `site_bans` | User-submitted reports and auditable moderator actions, including timed community mutes and community/site bans. |
+| `community_emojis` | Names and storage paths for approved community emoji images. |
+| `user_blocks` | A user’s private block relationships; either direction prevents private messages and friend requests. |
+| `watch_rooms`, `watch_room_members`, `room_messages` | Room host/state, AniList media ID/episode, access membership, and short room chat. No video files, AniList titles/covers, or list progress. |
 | `anilist_tokens` | One row per auth user containing versioned AES-256-GCM ciphertext for the AniList access token, plus timestamps. Its key exists only as an Edge Function secret. |
 | `rate_limits` | Short-window counters keyed by one-way SHA-256 hashes of source IPs or namespaced user IDs. Raw IPs and user IDs are not stored. |
 
@@ -19,13 +26,21 @@ Everything in this package lives under `supabase/`; extract it at the repository
 - **Friendships:** only participants can read a row. A user may create a pending request only as requester; the addressee may accept or decline it. After decline, either participant can start a fresh request, with a constrained reversal of requester/addressee.
 - **Messages:** only sender and recipient can read. A sender can insert only into an accepted friendship; the recipient alone may update `read_at`. Triggers reject changes to message identity/body/time.
 - **Recommendations:** only sender and recipient can read. A sender can insert only between accepted friends, initially `unseen`; the recipient alone may update its social reply. Triggers reject changes to media ID, note, participants, ID, and creation time.
+- **Queues:** owners control queue visibility and invited members; private queues are visible only to owners and invitees. Accepted friends can see and contribute to friends-visible queues. Item attribution is immutable, and a claimed recommender must match a recommendation received by the adder for that media ID.
+- **Anime threads:** signed-in users can read threads and replies. Writes are revoked from browser roles and pass through `thread-create` / `thread-post`, which validate the Supabase JWT, set authors from the verified user, check `ALLOWED_ORIGIN`, and rate-limit with the private counter RPC. A narrow read-only RPC returns only usernames and avatars for participants in a public thread.
+- **Communities:** public and unlisted pages are readable to signed-in users; posting requires membership. Browser joins can only create the caller’s own `member` role. A trigger seeds the creator as owner and adds `#general` and `#recommendations`; only owners/mods can add channels, capped at 20.
+- **Moderation:** reports are submitted through the verified, rate-limited `community-moderate` function. Moderator writes, role changes, bans, mutes, content removals, and audit records use its service client. Only the community owner can promote or demote moderators. Site-wide review and bans require `profiles.is_admin`; authenticated clients have no column privilege to update it, and a trigger permits changes only from a direct SQL session.
+- **Emoji storage:** `community-emojis` is public-read with a 256 KB bucket limit and PNG/WebP/GIF allowlist. No browser storage write policy is granted; all uploads pass through `emoji-upload`, which checks the verified user’s moderator role, image signature and dimensions, upload rate, unique name, and atomic 50-emoji quota before writing. Supabase service-role Storage access bypasses Storage RLS, so the function is the only write path.
+- **Account deletion and blocks:** `delete-my-data` verifies the caller, deletes their uploaded/community-owned emoji files and encrypted AniList token, then deletes their Supabase Auth user so dependent ARNS rows cascade. Blocks deny message read/write and friend-request create/answer policies in both directions.
+- **Watch rooms:** all three room tables have RLS. A participant helper only answers whether the verified current user belongs to a room. The host alone can update playback state through the narrow column grant and host policy; `host_id` cannot be updated by browser clients. `watch-room` checks the JWT, exact `ALLOWED_ORIGIN`, rate limit, invite/friend/community access, and room membership before creation/join/host transfer/chat. Host transfer only accepts a current participant. Private Realtime topics use RLS on `realtime.messages`; only room members can publish/read Presence and the allowed reaction/typing Broadcasts. Postgres Changes still checks table RLS for the room clock and chat. No service key reaches the browser.
+- **Legal pages:** Terms, Privacy, and Community Guidelines are plain-language drafts and should be reviewed before a public launch.
 - **Rate limits:** RLS is enabled; browser roles have no table grants or policies. Only server functions call the atomic rate-limit RPC.
 - **AniList token vault:** RLS is enabled and there are intentionally no policies; all privileges are revoked from `PUBLIC`, `anon`, and `authenticated`. Only `service_role` has the CRUD grants used by Edge Functions. No browser query can read or modify ciphertext.
 - There are no client delete policies. Messages, recommendations, and friendships are in `supabase_realtime` for live updates.
 
 ## Edge Function contracts
 
-All functions compare `Origin` with the exact `ALLOWED_ORIGIN`; non-matching origins receive no CORS permission. The two session-required functions also verify the Supabase bearer with `auth.getUser` and use the service role only server-side.
+Functions that accept browser requests compare `Origin` with the exact `ALLOWED_ORIGIN`; non-matching origins receive no CORS permission. Session-required functions verify the Supabase bearer with `auth.getUser` and use the service role only server-side.
 
 ### `auth-anilist` — `verify_jwt = false`
 
@@ -48,24 +63,9 @@ All functions compare `Origin` with the exact `ALLOWED_ORIGIN`; non-matching ori
 - **Action:** deletes only `anilist_tokens.user_id` matching the verified caller. It is idempotent and does not delete their profile, social records, or AniList entries.
 - **Success:** HTTP `200` `{ "ok": true }`.
 
-## Supabase Edge Function secrets
+### `watch-room` — `verify_jwt = true`
 
-Add these names in **Edge Functions → Secrets**; values are not included in this package:
-
-| Secret | Purpose |
-|---|---|
-| `ANILIST_CLIENT_ID` | AniList authorization-code exchange |
-| `ANILIST_CLIENT_SECRET` | Server-only AniList OAuth secret |
-| `ALLOWED_ORIGIN` | Exact website origin only |
-| `TOKEN_ENCRYPTION_KEY` | Base64 encoding of exactly 32 random bytes for AES-256-GCM |
-
-For a fresh key, generate locally with `openssl rand -base64 32`, then store the output only as the Edge Function secret. Do not commit it or place it in frontend environment variables. Changing this key makes already-stored ciphertext unreadable; reconnect users before removing an old key if planned rotation is ever required. Supabase supplies `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` to Edge Functions; do not expose either in the browser.
-
-For the default GitHub Pages URL, set `ALLOWED_ORIGIN` to `https://s4fire.github.io` (no repository path and no trailing slash), while AniList OAuth uses the exact redirect URI `https://s4fire.github.io/Anilist-Recoms.n.social/`. If Pages uses a custom domain, set the matching origin and callback instead.
-
-## Deploy order
-
-1. **Review and apply all three migrations, in filename order.** From the combined repository root, link the intended Supabase project and apply them:
+- …747 tokens truncated…he intended Supabase project and apply them:
 
    ```bash
    supabase login
@@ -80,14 +80,38 @@ For the default GitHub Pages URL, set `ALLOWED_ORIGIN` to `https://s4fire.github
    supabase functions deploy auth-anilist
    ```
 
-4. **Deploy the two authenticated list-access functions:**
+4. **Deploy the authenticated AniList list-access functions:**
 
    ```bash
    supabase functions deploy anilist-add-to-list
    supabase functions deploy anilist-disconnect
+   supabase functions deploy anilist-list-options
    ```
 
-5. Configure the three frontend `VITE_` build values, GitHub Pages, and the exact AniList callback in `HANDOFF-PAGES.md`, then deploy the static site.
-6. Smoke-test OAuth/token storage, friend requests, accepted-friend chat, recommendations/replies, add-to-Planning for a new anime, existing-list detection without status/progress changes, invalid-token reauthorization, and disconnect. Confirm as an authenticated browser role that `anilist_tokens` and `rate_limits` are unreadable and unwritable.
+5. **Deploy the rate-limited discussion write functions:**
+
+   ```bash
+   supabase functions deploy thread-create
+   supabase functions deploy thread-post
+   ```
+
+6. **Deploy the community and account functions** (JWT verification remains enabled):
+
+   ```bash
+   supabase functions deploy emoji-upload
+   supabase functions deploy community-moderate
+   supabase functions deploy delete-my-data
+   ```
+
+7. **Deploy the authenticated room function** (JWT verification remains enabled):
+
+   ```bash
+   supabase functions deploy watch-room
+   ```
+
+8. Configure the three required frontend `VITE_` build values (and optional `VITE_DAILYMOTION_PLAYER_ID`), GitHub Pages, and the exact AniList callback in `HANDOFF-PAGES.md`, then deploy the static site.
+9. Smoke-test OAuth/token storage, friend requests/blocks, accepted-friend chat, recommendation history/replies, queue membership and edits, thread pagination/realtime/rate limits/spoiler blur, taste comparison with public and private lists, community create/join/leave, channel permissions and Realtime chat, report/moderation actions, emoji upload validation and public reads, account deletion, room access as host/friend/invitee/community member, host-only state/transfer, Realtime state/chat/presence, drift sync/reconnect, provider embed-disabled cases, Twitch parent/domain behavior, Dailymotion Player ID, direct/HLS rights confirmation, external sync, add-to-Planning for a new anime, existing-list detection without status/progress changes, invalid-token reauthorization, and disconnect. Confirm as an authenticated browser role that `anilist_tokens` and `rate_limits` are unreadable and unwritable and that `profiles.is_admin` cannot be changed from the client.
+
+Phase 2 added the `community-emojis` Storage bucket and no new secret. Phase 3 adds no bucket and no new secret; `watch-room` uses the existing `ALLOWED_ORIGIN` and Supabase built-in environment values. Its migration is `20261009091119_phase3_watch_together.sql` after the Phase 2 migrations.
 
 No migration, secret, function, or Pages setting is deployed by this source package. Review and test in a development Supabase project first.
